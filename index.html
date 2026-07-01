@@ -1652,9 +1652,10 @@
             return text;
         }
 
-        function eksekusiCetakOtomatisSistem(dataTransaksi) {
+                function eksekusiCetakOtomatisSistem(dataTransaksi) {
             let adaPrinterTerhubung = false;
 
+            // 1. Jalankan pencetakan bawaan via Web Bluetooth BLE jika terhubung
             DB.kiosList.forEach(async (kios) => {
                 if (printerCharacteristics[kios]) {
                     adaPrinterTerhubung = true;
@@ -1669,8 +1670,29 @@
                 }
             });
 
-            if (!adaPrinterTerhubung) window.print(); 
+            // 2. FALLBACK UNTUK PRINTER IWARE ZJ-5802 (Bluetooth Classic via RawBT)
+            // Jika tidak ada printer Web BLE yang terhubung, otomatis dilempar ke aplikasi RawBT HP
+            if (!adaPrinterTerhubung) {
+                let gabunganStrukText = "";
+                
+                DB.kiosList.forEach((kios) => {
+                    let strukKios = generateReceiptTextText(dataTransaksi, kios);
+                    if (strukKios) {
+                        gabunganStrukText += strukKios + "\n================================\n\n";
+                    }
+                });
+
+                if (gabunganStrukText.trim()) {
+                    // Bersihkan karakter kontrol biner ESC/POS agar teks struk bersih saat dicetak RawBT
+                    let teksBersih = gabunganStrukText.replace(/[\x00-\x08\x0B-\x0C\x0E-\x1F\x7F-\x9F]/g, '');
+
+                    // Mengirim data nota via Android Web Intent langsung ke aplikasi pendukung RawBT
+                    let intentUrl = "intent://base64," + btoa(unescape(encodeURIComponent(teksBersih))) + "#Intent;scheme=rawbt;package=ru.a402d.rawbtprinter;end;";
+                    window.location.href = intentUrl;
+                }
+            }
         }
+
     </script>
 </body>
 </html>
