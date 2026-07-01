@@ -1685,17 +1685,16 @@
             }
 
             // 2. FALLBACK: Tembak ke Android Web Intent RawBT jika dibutuhkan
-                            if (gabunganStrukText.trim()) {
+            if (butuhRawBT && gabunganStrukTextRawBT.trim() !== "") {
+                setTimeout(() => {
                     // Bersihkan karakter kontrol biner ESC/POS agar teks struk bersih saat dicetak RawBT
-                    let teksBersih = gabunganStrukText.replace(/[\x00-\x08\x0B-\x0C\x0E-\x1F\x7F-\x9F]/g, '');
-
-                    // PERBAIKAN: Kirim sebagai Plain Text yang di-encode URL agar dibaca normal oleh RawBT
+                    let teksBersih = gabunganStrukTextRawBT.replace(/[\x00-\x08\x0B-\x0C\x0E-\x1F\x7F-\x9F]/g, '');
+                    
+                    // PERBAIKAN: Format Intent untuk Plain Text URL Encoded RawBT
                     let intentUrl = "intent:" + encodeURIComponent(teksBersih) + "#Intent;scheme=rawbt;package=ru.a402d.rawbtprinter;end;";
                     
-                    // Eksekusi pemanggilan RawBT
                     window.location.href = intentUrl;
-                }
-, 800); // Beri jeda sedikit agar antarmuka kasir (SweetAlert) muncul lebih dulu
+                }, 800); // Beri jeda sedikit agar antarmuka kasir (SweetAlert) muncul lebih dulu
             }
         }
 
