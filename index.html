@@ -961,7 +961,7 @@
             saveDatabase();
             
             cetakNotaHTML(dataTransaksi, dataTransaksi.bayar - dataTransaksi.totalNota);
-            eksekusiCetakOtomatisSistem(dataTransaksi); // Cetak Bluetooth
+            eksekusiCetakOtomatisSistem(dataTransaksi); // Cetak Bluetooth & RawBT
             
             keranjang = []; 
             document.getElementById('input-bayar').value = ''; 
@@ -1542,7 +1542,12 @@
             try {
                 const device = await navigator.bluetooth.requestDevice({
                     acceptAllDevices: true,
-                    optionalServices: ['0000ffe0-0000-1000-8000-00805f9b34fb', '0000ffe1-0000-1000-8000-00805f9b34fb']
+                    optionalServices: [
+                        '000018f0-0000-1000-8000-00805f9b34fb', // Standard BLE Printer (Sering dipakai thermal printer modern)
+                        '0000ff00-0000-1000-8000-00805f9b34fb', // Generic Chinese Printers
+                        '0000ffe0-0000-1000-8000-00805f9b34fb', // Custom Module
+                        '0000ffe1-0000-1000-8000-00805f9b34fb'  // Custom Module Data
+                    ]
                 });
                 
                 Swal.fire({ title: 'Menghubungkan...', text: `Menyambungkan ke ${device.name}`, allowOutsideClick: false, didOpen: () => Swal.showLoading() });
@@ -1652,44 +1657,41 @@
             return text;
         }
 
-                function eksekusiCetakOtomatisSistem(dataTransaksi) {
-            let adaPrinterTerhubung = false;
+        async function eksekusiCetakOtomatisSistem(dataTransaksi) {
+            let gabunganStrukTextRawBT = "";
+            let butuhRawBT = false;
 
-            // 1. Jalankan pencetakan bawaan via Web Bluetooth BLE jika terhubung
-            DB.kiosList.forEach(async (kios) => {
-                if (printerCharacteristics[kios]) {
-                    adaPrinterTerhubung = true;
-                    let strukKhususKios = generateReceiptTextText(dataTransaksi, kios);
-                    if (strukKhususKios) {
-                        try {
-                            await kirimDataKePrinter(printerCharacteristics[kios], strukKhususKios);
-                        } catch(e) {
-                            Swal.fire('Print Gagal', `Koneksi ke printer ${kios} terputus saat mencetak.`, 'warning');
-                        }
-                    }
-                }
-            });
-
-            // 2. FALLBACK UNTUK PRINTER IWARE ZJ-5802 (Bluetooth Classic via RawBT)
-            // Jika tidak ada printer Web BLE yang terhubung, otomatis dilempar ke aplikasi RawBT HP
-            if (!adaPrinterTerhubung) {
-                let gabunganStrukText = "";
+            // 1. Eksekusi Pencetakan & Pengecekan Kios
+            for (let i = 0; i < DB.kiosList.length; i++) {
+                let kios = DB.kiosList[i];
+                let strukKhususKios = generateReceiptTextText(dataTransaksi, kios);
                 
-                DB.kiosList.forEach((kios) => {
-                    let strukKios = generateReceiptTextText(dataTransaksi, kios);
-                    if (strukKios) {
-                        gabunganStrukText += strukKios + "\n================================\n\n";
+                if (!strukKhususKios) continue; // Skip jika kios ini tidak ada di pesanan kasir
+
+                // Jika printer kios ini ditautkan via BLE
+                if (printerCharacteristics[kios]) {
+                    try {
+                        await kirimDataKePrinter(printerCharacteristics[kios], strukKhususKios);
+                    } catch(e) {
+                        console.warn(`Gagal cetak BLE ke ${kios}, dialihkan otomatis ke RawBT`);
+                        gabunganStrukTextRawBT += strukKhususKios + "\n================================\n\n";
+                        butuhRawBT = true;
                     }
-                });
+                } else {
+                    // Jika tidak ada BLE, tampung untuk ditembak ke RawBT
+                    gabunganStrukTextRawBT += strukKhususKios + "\n================================\n\n";
+                    butuhRawBT = true;
+                }
+            }
 
-                if (gabunganStrukText.trim()) {
+            // 2. FALLBACK: Tembak ke Android Web Intent RawBT jika dibutuhkan
+            if (butuhRawBT && gabunganStrukTextRawBT.trim() !== "") {
+                setTimeout(() => {
                     // Bersihkan karakter kontrol biner ESC/POS agar teks struk bersih saat dicetak RawBT
-                    let teksBersih = gabunganStrukText.replace(/[\x00-\x08\x0B-\x0C\x0E-\x1F\x7F-\x9F]/g, '');
-
-                    // Mengirim data nota via Android Web Intent langsung ke aplikasi pendukung RawBT
+                    let teksBersih = gabunganStrukTextRawBT.replace(/[\x00-\x08\x0B-\x0C\x0E-\x1F\x7F-\x9F]/g, '');
                     let intentUrl = "intent://base64," + btoa(unescape(encodeURIComponent(teksBersih))) + "#Intent;scheme=rawbt;package=ru.a402d.rawbtprinter;end;";
                     window.location.href = intentUrl;
-                }
+                }, 800); // Beri jeda sedikit agar antarmuka kasir (SweetAlert) muncul lebih dulu
             }
         }
 
