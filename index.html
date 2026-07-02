@@ -523,7 +523,8 @@
         // ==========================================
         let DB = {
             kiosList: [], produkList: [], riwayatPenjualan: [],
-            karyawanList: [], settingStruk: {}, kartuPelanggan: [], settingToko: {}
+            karyawanList: [], settingStruk: {}, kartuPelanggan: [], settingToko: {},
+            printerMap: {} // TAHAP 1: Tambahkan state untuk menyimpan ID Printer
         };
 
         async function initDatabase() {
@@ -559,8 +560,11 @@
                 accent: "#1abc9c",
                 bg: "#f0f3f7"
             };
-            applyTemaToko();
 
+            // TAHAP 2: Muat data printer yang tersimpan
+            DB.printerMap = JSON.parse(localStorage.getItem('printer_map')) || {};
+
+            applyTemaToko();
             saveDatabase(true); // Commit standard format to DB
         }
 
@@ -573,6 +577,8 @@
                 localStorage.setItem('setting_struk', JSON.stringify(DB.settingStruk));
                 localStorage.setItem('kartu_pelanggan', JSON.stringify(DB.kartuPelanggan));
                 localStorage.setItem('setting_toko', JSON.stringify(DB.settingToko));
+                // TAHAP 3: Simpan mapping printer ke LocalStorage
+                localStorage.setItem('printer_map', JSON.stringify(DB.printerMap));
             } catch (e) {
                 Swal.fire('Error Database', 'Gagal menyimpan data ke memori perangkat.', 'error');
             }
@@ -1536,17 +1542,17 @@
         }
 
         // ==========================================
-        // 13. BLUETOOTH PRINTER TERINTEGRASI (REFACTOR)
+        // 13. BLUETOOTH PRINTER TERINTEGRASI (REFACTOR FIX)
         // ==========================================
         async function hubungkanPrinterKios(kiosName) {
             try {
                 const device = await navigator.bluetooth.requestDevice({
                     acceptAllDevices: true,
                     optionalServices: [
-                        '000018f0-0000-1000-8000-00805f9b34fb', // Standard BLE Printer
-                        '0000ff00-0000-1000-8000-00805f9b34fb', // Generic Chinese Printers
-                        '0000ffe0-0000-1000-8000-00805f9b34fb', // Custom Module
-                        '0000ffe1-0000-1000-8000-00805f9b34fb'  // Custom Module Data
+                        '000018f0-0000-1000-8000-00805f9b34fb', 
+                        '0000ff00-0000-1000-8000-00805f9b34fb', 
+                        '0000ffe0-0000-1000-8000-00805f9b34fb', 
+                        '0000ffe1-0000-1000-8000-00805f9b34fb'  
                     ]
                 });
                 
@@ -1568,11 +1574,52 @@
                 
                 printerDevices[kiosName] = device;
                 printerCharacteristics[kiosName] = characteristic;
+
+                // SIMPAN ID PRINTER KE LOCAL STORAGE AGAR TIDAK LUPA SAAT RESTART
+                DB.printerMap[kiosName] = device.id;
+                saveDatabase();
                 
                 Swal.fire('Berhasil!', `Printer Bluetooth ditautkan ke ${kiosName}!`, 'success');
                 renderDaftarPrinterStatus();
             } catch (error) {
                 Swal.fire('Gagal Koneksi', error.message, 'error');
+            }
+        }
+
+        // FUNGSI BARU: Sambung ulang cepat tanpa perlu scan dari awal
+        async function reconnectPrinter(kiosName) {
+            try {
+                let savedDeviceId = DB.printerMap[kiosName];
+                if (!savedDeviceId) throw new Error("Data printer hilang. Silakan Tautkan Baru.");
+
+                // Ambil daftar perangkat yang pernah diizinkan oleh browser
+                const devices = await navigator.bluetooth.getDevices();
+                const device = devices.find(d => d.id === savedDeviceId);
+
+                if (!device) throw new Error("Printer tidak ditemukan di memori browser. Silakan klik Tautkan Baru.");
+
+                Swal.fire({ title: 'Menyambung Ulang...', text: `Menghubungkan otomatis ke printer...`, allowOutsideClick: false, didOpen: () => Swal.showLoading() });
+
+                device.addEventListener('gattserverdisconnected', () => handlePrinterDisconnect(kiosName, device));
+                const server = await device.gatt.connect();
+                const services = await server.getPrimaryServices();
+                let characteristic = null;
+
+                for (let service of services) {
+                    const characteristics = await service.getCharacteristics();
+                    characteristic = characteristics.find(c => c.properties.write || c.properties.writeWithoutResponse);
+                    if (characteristic) break;
+                }
+
+                if (!characteristic) throw new Error("Karakteristik printer tidak ditemukan.");
+
+                printerDevices[kiosName] = device;
+                printerCharacteristics[kiosName] = characteristic;
+
+                Swal.fire('Berhasil!', `Printer berhasil disambung ulang ke ${kiosName}!`, 'success');
+                renderDaftarPrinterStatus();
+            } catch (error) {
+                Swal.fire('Gagal Reconnect', error.message, 'error');
             }
         }
 
@@ -1585,24 +1632,37 @@
         function renderDaftarPrinterStatus() {
             let container = document.getElementById('printer-config-list'); if(!container) return;
             
-            // Tambahkan virtual target "KASIR PUSAT" di paling atas
             let semuaTarget = ['KASIR PUSAT', ...DB.kiosList];
             
             container.innerHTML = semuaTarget.map(target => {
                 let terhubung = printerCharacteristics[target] ? true : false;
+                let adaTersimpan = DB.printerMap && DB.printerMap[target]; // Cek apakah pernah ditautkan
+                
                 let titleName = target === 'KASIR PUSAT' ? 'KASIR PUSAT (Master Struk Belanja)' : `Kios: ${target}`;
                 
+                let statusText = terhubung ? '🟢 Terhubung (Cetak Otomatis Aktif)' : (adaTersimpan ? '🟡 Riwayat Tersimpan (Klik Sambung Ulang)' : '🔴 Belum Ada Printer');
+                let statusColor = terhubung ? 'var(--success)' : (adaTersimpan ? '#d97706' : 'var(--danger)'); // #d97706 is a warning orange
+                
+                // Atur tombol dinamis
+                let btnHtml = '';
+                if (terhubung) {
+                    btnHtml = `<button type="button" onclick="hubungkanPrinterKios('${target}')" style="background:var(--blue); color: white; padding:8px 12px; font-size:13px; border:none; border-radius: 4px; cursor:pointer;">🔄 Ganti Printer</button>`;
+                } else if (adaTersimpan) {
+                    btnHtml = `
+                        <button type="button" onclick="reconnectPrinter('${target}')" style="background:var(--success); color: white; padding:8px 12px; font-size:13px; border:none; border-radius: 4px; cursor:pointer; margin-right: 5px;">⚡ Sambung Ulang</button>
+                        <button type="button" onclick="hubungkanPrinterKios('${target}')" style="background:var(--purple); color: white; padding:8px 12px; font-size:13px; border:none; border-radius: 4px; cursor:pointer;">🔌 Tautkan Baru</button>
+                    `;
+                } else {
+                    btnHtml = `<button type="button" onclick="hubungkanPrinterKios('${target}')" style="background:var(--purple); color: white; padding:8px 12px; font-size:13px; border:none; border-radius: 4px; cursor:pointer;">🔌 Tautkan Bluetooth</button>`;
+                }
+
                 return `
                     <div style="display:flex; justify-content:space-between; align-items:center; background:white; padding:12px; border-radius:6px; border:1px solid #cbd5e1; box-shadow:0 2px 4px rgba(0,0,0,0.02); flex-wrap:wrap; gap: 10px;">
                         <div>
                             <b style="font-size:14px;">${titleName}</b><br>
-                            <span style="font-size:12px; font-weight:bold; color:${terhubung ? 'var(--success)' : 'var(--danger)'}">
-                                ${terhubung ? '🟢 Terhubung (Cetak Otomatis Aktif)' : '🔴 Belum Ada Printer'}
-                            </span>
+                            <span style="font-size:12px; font-weight:bold; color:${statusColor}">${statusText}</span>
                         </div>
-                        <button type="button" onclick="hubungkanPrinterKios('${target}')" style="background:${terhubung ? 'var(--blue)' : 'var(--purple)'}; color: white; padding:8px 12px; font-size:13px; border:none; border-radius: 4px; cursor:pointer;">
-                            ${terhubung ? '🔄 Ganti Printer' : '🔌 Tautkan Bluetooth'}
-                        </button>
+                        <div>${btnHtml}</div>
                     </div>
                 `;
             }).join('');
