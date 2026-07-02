@@ -994,7 +994,21 @@
             if(bayar < total) { Swal.fire('Gagal', 'Uang tunai pembayaran tidak cukup!', 'error'); return; }
 
             let dataTransaksi = buatDataTransaksi(total, bayar);
+            let kembalian = bayar - total;
+            
             eksekusiCheckout(dataTransaksi);
+
+            // MODIFIKASI: Menambahkan popup notifikasi sukses & jumlah kembalian tunai
+            Swal.fire({
+                icon: 'success',
+                title: 'Transaksi Tunai Sukses!',
+                html: `Total Belanja: <b>Rp ${total.toLocaleString('id-ID')}</b><br>` +
+                      `Uang Tunai: <b>Rp ${bayar.toLocaleString('id-ID')}</b><br><br>` +
+                      `<div style="font-size: 1.2rem; font-weight: bold;">Uang Kembalian:<br>` +
+                      `<span style="color: var(--success); font-size: 1.8rem; font-family: monospace;">Rp ${kembalian.toLocaleString('id-ID')}</span></div>`,
+                confirmButtonText: 'Selesai',
+                confirmButtonColor: 'var(--success)'
+            });
         }
 
         // ==========================================
