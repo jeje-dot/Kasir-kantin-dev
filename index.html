@@ -122,13 +122,20 @@
             <p style="margin: 0; opacity: 0.9; font-size: 15px;" id="welcome-user-text">Sistem POS Multi-Kios Terintegrasi.</p>
         </div>
 
-        <h3 style="color: var(--primary); margin-bottom: 15px;">MENU OPERASIONAL</h3>
+        <h3 style="color: var(--primary); margin-bottom: 15px;">MENU OPERASIONAL (STAFF & OWNER)</h3>
         <div class="menu-grid">
             <div class="menu-card" onclick="showSection('pos', 'Mesin Kasir Utama')">
                 <div class="menu-icon">🖥️</div>
                 <div class="menu-title">Mesin Kasir Kas Pusat</div>
                 <p class="menu-desc">Transaksi penjualan lintas kios, gabung order, & cetak struk.</p>
             </div>
+            
+            <div class="menu-card" onclick="showSection('printer-settings', 'Manajemen Printer Kios')">
+                <div class="menu-icon">🖨️</div>
+                <div class="menu-title" style="color: var(--blue);">Koneksi Printer</div>
+                <p class="menu-desc">Tautkan dan kelola sambungan printer thermal bluetooth.</p>
+            </div>
+
             <div class="menu-card" onclick="showSection('card-management', 'Manajemen & Top Up Kartu')">
                 <div class="menu-icon">💳</div>
                 <div class="menu-title">Top Up & Kartu</div>
@@ -176,8 +183,8 @@
                 <div class="menu-title">Kelola Karyawan</div>
             </div>
             <div class="menu-card" onclick="showSection('struk-settings', 'Pengaturan Desain Struk')">
-                <div class="menu-icon">🖨️</div>
-                <div class="menu-title" style="color: var(--blue);">Desain Struk</div>
+                <div class="menu-icon">🧾</div>
+                <div class="menu-title">Desain Teks Struk</div>
             </div>
             <div class="menu-card" onclick="showSection('toko-settings', 'Pengaturan Desain Toko')">
                 <div class="menu-icon">🎨</div>
@@ -258,6 +265,16 @@
                         <div class="quick-grid" id="quick-product-grid"></div>
                     </div>
                 </div>
+            </div>
+        </div>
+        
+        <div id="printer-settings" class="section">
+            <h2 style="color: var(--primary); margin-top:0;">Manajemen Koneksi Printer Bluetooth</h2>
+            <div style="background: #f8fafc; padding: 20px; border-radius: 8px; margin-bottom: 25px; border: 1px solid #e2e8f0; max-width: 800px;">
+                <p style="font-size:13px; color:#7f8c8d; margin-top:0; margin-bottom: 20px; border-left: 4px solid var(--warning); padding-left: 10px;">
+                    <b>Info Sistem:</b> Karena aturan keamanan privasi Browser, koneksi Bluetooth otomatis terputus jika halaman di-refresh. Gunakan tombol di bawah untuk menyambung ulang printer dengan cepat sebelum memulai shift kasir.
+                </p>
+                <div id="printer-config-list" style="display:flex; flex-direction:column; gap:10px;"></div>
             </div>
         </div>
 
@@ -428,7 +445,7 @@
         </div>
 
         <div id="struk-settings" class="section">
-            <h2 style="color: var(--primary); margin-top:0;">Pengaturan Desain Struk</h2>
+            <h2 style="color: var(--primary); margin-top:0;">Pengaturan Teks Struk</h2>
             <div style="background: #f8fafc; padding: 20px; border-radius: 8px; margin-bottom: 25px; border: 1px solid #e2e8f0; max-width: 600px;">
                 <label>Nama Toko / Pujasera:</label>
                 <input type="text" id="setting-struk-nama" placeholder="Contoh: PUJASERA MAKMUR" style="width:100%;">
@@ -440,12 +457,6 @@
                 <textarea id="setting-struk-footer" placeholder="Contoh: Terima kasih atas kunjungan Anda!" style="width:100%; height:80px;"></textarea>
                 
                 <button onclick="simpanPengaturanStruk()" style="background: var(--success); width:100%; margin-top: 15px; font-size: 16px;">Simpan Desain Struk</button>
-
-                <div style="margin-top: 25px; border-top: 2px solid #e2e8f0; padding-top: 20px;">
-                    <h4 style="margin:0 0 10px 0; color:var(--purple);">🔵 Integrasi Printer Bluetooth Per Kios</h4>
-                    <p style="font-size:12px; color:#7f8c8d; margin-top:0;">Hubungkan printer thermal kasir & masing-masing tenant di sini untuk cetak otomatis.</p>
-                    <div id="printer-config-list" style="display:flex; flex-direction:column; gap:10px;"></div>
-                </div>
             </div>
         </div>
 
@@ -524,7 +535,7 @@
         let DB = {
             kiosList: [], produkList: [], riwayatPenjualan: [],
             karyawanList: [], settingStruk: {}, kartuPelanggan: [], settingToko: {},
-            printerMap: {} // TAHAP 1: Tambahkan state untuk menyimpan ID Printer
+            printerMap: {} // Data ID Printer
         };
 
         async function initDatabase() {
@@ -561,7 +572,7 @@
                 bg: "#f0f3f7"
             };
 
-            // TAHAP 2: Muat data printer yang tersimpan
+            // Muat data printer yang tersimpan
             DB.printerMap = JSON.parse(localStorage.getItem('printer_map')) || {};
 
             applyTemaToko();
@@ -577,7 +588,6 @@
                 localStorage.setItem('setting_struk', JSON.stringify(DB.settingStruk));
                 localStorage.setItem('kartu_pelanggan', JSON.stringify(DB.kartuPelanggan));
                 localStorage.setItem('setting_toko', JSON.stringify(DB.settingToko));
-                // TAHAP 3: Simpan mapping printer ke LocalStorage
                 localStorage.setItem('printer_map', JSON.stringify(DB.printerMap));
             } catch (e) {
                 Swal.fire('Error Database', 'Gagal menyimpan data ke memori perangkat.', 'error');
@@ -804,6 +814,7 @@
             if(id === 'sales') { toggleCustomDate(); renderLaporanPenjualan(); }
             if(id === 'kios-manager') renderKiosManagerList();
             if(id === 'karyawan-section') renderKaryawan();
+            if(id === 'printer-settings') renderDaftarPrinterStatus();
             if(id === 'toko-settings' || id === 'struk-settings') muatDataPengaturan();
         }
 
@@ -1542,7 +1553,7 @@
         }
 
         // ==========================================
-        // 13. BLUETOOTH PRINTER TERINTEGRASI (REFACTOR FIX)
+        // 13. BLUETOOTH PRINTER TERINTEGRASI (REFACTOR FIX & FALLBACK)
         // ==========================================
         async function hubungkanPrinterKios(kiosName) {
             try {
@@ -1586,17 +1597,23 @@
             }
         }
 
-        // FUNGSI BARU: Sambung ulang cepat tanpa perlu scan dari awal
+        // FUNGSI BARU: Sambung ulang otomatis dengan fallback yang cerdas
         async function reconnectPrinter(kiosName) {
             try {
                 let savedDeviceId = DB.printerMap[kiosName];
-                if (!savedDeviceId) throw new Error("Data printer hilang. Silakan Tautkan Baru.");
+                if (!savedDeviceId) throw new Error("Data printer hilang.");
 
-                // Ambil daftar perangkat yang pernah diizinkan oleh browser
+                // Cek apakah browser (Chrome Android lama dsb) mensupport getDevices
+                if (!navigator.bluetooth.getDevices) {
+                    throw new Error("Browser tidak mendukung fitur sambung ulang otomatis di latar belakang.");
+                }
+
                 const devices = await navigator.bluetooth.getDevices();
                 const device = devices.find(d => d.id === savedDeviceId);
 
-                if (!device) throw new Error("Printer tidak ditemukan di memori browser. Silakan klik Tautkan Baru.");
+                if (!device) {
+                    throw new Error("Izin perangkat dicabut oleh browser atau cache terhapus.");
+                }
 
                 Swal.fire({ title: 'Menyambung Ulang...', text: `Menghubungkan otomatis ke printer...`, allowOutsideClick: false, didOpen: () => Swal.showLoading() });
 
@@ -1619,7 +1636,18 @@
                 Swal.fire('Berhasil!', `Printer berhasil disambung ulang ke ${kiosName}!`, 'success');
                 renderDaftarPrinterStatus();
             } catch (error) {
-                Swal.fire('Gagal Reconnect', error.message, 'error');
+                console.warn("Reconnect gagal, mengalihkan ke mode manual:", error);
+                // Jika gagal reconnect otomatis, paksa buka popup native bluetooth dengan ramah
+                Swal.fire({
+                    title: 'Sambung Ulang Otomatis Gagal',
+                    text: 'Sistem browser telah memutuskan memori, silakan pilih ulang printer Anda di popup selanjutnya.',
+                    icon: 'warning',
+                    confirmButtonText: 'Pilih Printer Sekarang'
+                }).then((result) => {
+                    if(result.isConfirmed) {
+                        hubungkanPrinterKios(kiosName);
+                    }
+                });
             }
         }
 
@@ -1641,7 +1669,7 @@
                 let titleName = target === 'KASIR PUSAT' ? 'KASIR PUSAT (Master Struk Belanja)' : `Kios: ${target}`;
                 
                 let statusText = terhubung ? '🟢 Terhubung (Cetak Otomatis Aktif)' : (adaTersimpan ? '🟡 Riwayat Tersimpan (Klik Sambung Ulang)' : '🔴 Belum Ada Printer');
-                let statusColor = terhubung ? 'var(--success)' : (adaTersimpan ? '#d97706' : 'var(--danger)'); // #d97706 is a warning orange
+                let statusColor = terhubung ? 'var(--success)' : (adaTersimpan ? '#d97706' : 'var(--danger)');
                 
                 // Atur tombol dinamis
                 let btnHtml = '';
