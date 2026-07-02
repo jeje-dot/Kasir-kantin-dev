@@ -1809,6 +1809,20 @@
             }
         }
 
+        // ==========================================
+        // 14. PENCEGAH REFRESH TIDAK SENGAJA
+        // ==========================================
+        window.addEventListener('beforeunload', function (e) {
+            // Mengecek apakah ada minimal 1 printer yang sedang terhubung di memori
+            let adaKoneksiAktif = Object.values(printerCharacteristics).some(char => char !== null);
+            
+            if (adaKoneksiAktif) {
+                // Memicu popup peringatan bawaan browser
+                e.preventDefault();
+                e.returnValue = 'Printer Bluetooth sedang terhubung. Jika halaman dimuat ulang, koneksi akan terputus.';
+            }
+        });
+
     </script>
 </body>
 </html>
