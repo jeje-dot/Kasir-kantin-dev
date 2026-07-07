@@ -1608,61 +1608,69 @@
         }
 
         async function reconnectPrinter(kiosName) {
-            // FIX 1B: Cegah Aplikasi Crash Jika Dibuka via APK
-            if (!navigator.bluetooth || !navigator.bluetooth.getDevices) {
-                Swal.fire({
-                    icon: 'info',
-                    title: 'Batas Versi APK',
-                    text: 'Fitur sambung otomatis hanya berlaku di Web/Chrome PWA. Di dalam APK, aplikasi akan otomatis mencetak menggunakan RawBT.'
-                });
-                return;
-            }
+    // 1. Pengecekan Utama: Apakah browser mendukung Web Bluetooth sama sekali?
+    if (!navigator.bluetooth) {
+        Swal.fire({
+            icon: 'info',
+            title: 'Batas Versi Browser/APK',
+            text: 'Perangkat atau browser ini tidak mendukung Web Bluetooth. (Gunakan RawBT jika Anda di dalam APK).'
+        });
+        return;
+    }
 
-            try {
-                let savedDeviceId = DB.printerMap[kiosName];
-                if (!savedDeviceId) throw new Error("Data printer hilang.");
+    try {
+        let device;
 
-                const devices = await navigator.bluetooth.getDevices();
-                const device = devices.find(d => d.id === savedDeviceId);
-
-                if (!device) {
-                    throw new Error("Izin perangkat dicabut oleh browser atau cache terhapus.");
-                }
-
-                Swal.fire({ title: 'Menyambung Ulang...', text: `Menghubungkan otomatis ke printer...`, allowOutsideClick: false, didOpen: () => Swal.showLoading() });
-
-                device.addEventListener('gattserverdisconnected', () => handlePrinterDisconnect(kiosName, device));
-                const server = await device.gatt.connect();
-                const services = await server.getPrimaryServices();
-                let characteristic = null;
-
-                for (let service of services) {
-                    const characteristics = await service.getCharacteristics();
-                    characteristic = characteristics.find(c => c.properties.write || c.properties.writeWithoutResponse);
-                    if (characteristic) break;
-                }
-
-                if (!characteristic) throw new Error("Karakteristik printer tidak ditemukan.");
-
-                printerDevices[kiosName] = device;
-                printerCharacteristics[kiosName] = characteristic;
-
-                Swal.fire('Berhasil!', `Printer berhasil disambung ulang ke ${kiosName}!`, 'success');
-                renderDaftarPrinterStatus();
-            } catch (error) {
-                console.warn("Reconnect gagal, mengalihkan ke mode manual:", error);
-                Swal.fire({
-                    title: 'Sambung Ulang Otomatis Gagal',
-                    text: 'Sistem browser telah memutuskan memori, silakan pilih ulang printer Anda di popup selanjutnya.',
-                    icon: 'warning',
-                    confirmButtonText: 'Pilih Printer Sekarang'
-                }).then((result) => {
-                    if(result.isConfirmed) {
-                        hubungkanPrinterKios(kiosName);
-                    }
-                });
+        // 2. Coba sambung otomatis HANYA JIKA fitur getDevices didukung browser
+        if (navigator.bluetooth.getDevices) {
+            const devices = await navigator.bluetooth.getDevices();
+            if (devices.length > 0) {
+                device = devices[0];
+                console.log("Menemukan printer tersimpan:", device.name);
             }
         }
+
+        // 3. Jika tidak ada yang tersimpan atau browser tidak mendukung getDevices,
+        // buka pop-up pencarian agar pengguna memilih printer secara manual.
+        if (!device) {
+            device = await navigator.bluetooth.requestDevice({
+                // Catatan: Jika printer thermal Anda punya spesifikasi UUID tertentu, 
+                // ubah acceptAllDevices menjadi false dan masukkan UUID-nya.
+                acceptAllDevices: true,
+                optionalServices: ['000018f0-0000-1000-8000-00805f9b34fb'] // Ini UUID standar printer thermal
+            });
+        }
+
+        // 4. Proses koneksi Bluetooth
+        console.log("Menghubungkan ke GATT Server...");
+        const server = await device.gatt.connect();
+        
+        // 5. Berhasil! Munculkan notifikasi sukses
+        Swal.fire({
+            icon: 'success',
+            title: 'Tersambung!',
+            text: 'Printer ' + device.name + ' siap digunakan.'
+        });
+
+        // -------------------------------------------------------------
+        // PENTING: Masukkan kode lanjutan Anda di bawah ini
+        // (Misalnya kode untuk menginisialisasi variabel printer Anda)
+        // -------------------------------------------------------------
+
+    } catch (error) {
+        console.error("Error koneksi:", error);
+        
+        // Abaikan error jika pengguna hanya menekan tombol "Batal" pada pop-up pencarian Bluetooth
+        if (error.name !== 'NotFoundError') {
+            Swal.fire({
+                icon: 'error',
+                title: 'Gagal Menyambung',
+                text: 'Pastikan Bluetooth aktif, izin lokasi Chrome menyala, dan printer dalam keadaan hidup.'
+            });
+        }
+    }
+}
+
 
         async function handlePrinterDisconnect(kiosName, device) {
             console.log(`Printer ${kiosName} terputus.`);
