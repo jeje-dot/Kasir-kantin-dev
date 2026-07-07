@@ -508,10 +508,9 @@
         // 1. SISTEM KEAMANAN CRYPTO (MIGRASI DARI HASH LAMA)
         // ==========================================
         const _SECRET_SALT_OLD = "POS_SECURE_";
-        const SUPER_ADMIN_HASH_OLD = "POS_SECURE_1656673536"; // Tetap dukung backdoor owner lama
+        const SUPER_ADMIN_HASH_OLD = "POS_SECURE_1656673536"; 
         const NEW_SALT = "POS_KUSNADI_V2_SALT";
 
-        // Fungsi Hash Lama untuk fallback migrasi
         function hashPIN_OLD(string) {
             let hash = 0; if (string.length === 0) return _SECRET_SALT_OLD;
             for (let i = 0; i < string.length; i++) {
@@ -520,7 +519,6 @@
             return _SECRET_SALT_OLD + hash;
         }
 
-        // Fungsi Hash Baru (SHA-256 Web Crypto API)
         async function hashPIN(pin) {
             const encoder = new TextEncoder();
             const data = encoder.encode(pin + NEW_SALT);
@@ -535,7 +533,7 @@
         let DB = {
             kiosList: [], produkList: [], riwayatPenjualan: [],
             karyawanList: [], settingStruk: {}, kartuPelanggan: [], settingToko: {},
-            printerMap: {} // Data ID Printer
+            printerMap: {} 
         };
 
         async function initDatabase() {
@@ -548,7 +546,6 @@
             
             DB.karyawanList = JSON.parse(localStorage.getItem('karyawan'));
             if(!DB.karyawanList) {
-                // Generate secure owner pin on first load (default: 1234)
                 let defaultHash = await hashPIN("1234");
                 DB.karyawanList = [{nama: "Kasir Pusat (Owner)", pinHash: defaultHash, role: "Owner"}];
             }
@@ -561,10 +558,8 @@
                 { id: "5001", nama: "Pelanggan Contoh", saldo: 50000, riwayat: [] }
             ];
 
-            // Backward compatibility patch for Card History
             DB.kartuPelanggan.forEach(k => { if(!k.riwayat) k.riwayat = []; });
 
-            // Load Store Settings & Apply Theme Immediately
             DB.settingToko = JSON.parse(localStorage.getItem('setting_toko')) || {
                 namaApp: "KUSNADI POS",
                 primary: "#2c3e50",
@@ -572,11 +567,10 @@
                 bg: "#f0f3f7"
             };
 
-            // Muat data printer yang tersimpan
             DB.printerMap = JSON.parse(localStorage.getItem('printer_map')) || {};
 
             applyTemaToko();
-            saveDatabase(true); // Commit standard format to DB
+            saveDatabase(true); 
         }
 
         function saveDatabase(all = false) {
@@ -640,11 +634,9 @@
         let isScanningNFC = false;
         let nfcAbortController = null;
 
-        // Inisialisasi on load
         window.onload = async () => {
             await initDatabase();
             
-            // Session Persistence
             let sessionData = sessionStorage.getItem('pos_user_session');
             if(sessionData) {
                 try {
@@ -672,13 +664,11 @@
                 let inputHashNew = await hashPIN(pinInput);
                 let user = DB.karyawanList.find(u => u.pinHash === inputHashNew);
                 
-                // Jika hash baru tidak ketemu, coba migrasi dari hash lama
                 if(!user) {
                     let oldHash = hashPIN_OLD(pinInput);
                     let migratableUser = DB.karyawanList.find(u => u.pinHash === oldHash);
                     
                     if(migratableUser) {
-                        // Silent Migration
                         migratableUser.pinHash = inputHashNew;
                         saveDatabase();
                         user = migratableUser;
@@ -753,7 +743,6 @@
                     showCancelButton: true, confirmButtonColor: '#8e44ad'
                 }).then(async (result) => {
                     if (result.isConfirmed) {
-                        // Dukung hash lama & baru untuk backdoor admin
                         let hashLama = hashPIN_OLD(result.value);
                         let hashBaru = await hashPIN(result.value);
                         
@@ -806,7 +795,6 @@
             document.getElementById(id).style.display = 'block';
             document.getElementById('header-menu-title').innerText = `📍 ${namaMenu}`;
             
-            // Panggil render berdasarkan sesi aktif agar tidak lemot
             if(id === 'pos') { renderKeranjang(); renderQuickGrid(); setTimeout(() => document.getElementById('input-barcode').focus(), 100); }
             if(id === 'card-management') renderKartu();
             if(id === 'stock') renderStok();
@@ -825,12 +813,10 @@
         }
 
         function muatDataPengaturan() {
-            // Data Pengaturan Struk
             document.getElementById('setting-struk-nama').value = DB.settingStruk.namaToko || '';
             document.getElementById('setting-struk-alamat').value = DB.settingStruk.alamat || '';
             document.getElementById('setting-struk-footer').value = DB.settingStruk.footer || '';
             
-            // Data Pengaturan Tema Toko
             document.getElementById('setting-toko-nama').value = DB.settingToko.namaApp || 'KUSNADI POS';
             document.getElementById('setting-toko-primary').value = DB.settingToko.primary || '#2c3e50';
             document.getElementById('setting-toko-accent').value = DB.settingToko.accent || '#1abc9c';
@@ -958,7 +944,7 @@
         function buatDataTransaksi(total, bayar) {
             return {
                 idNota: "PJ-" + Date.now().toString().slice(-6),
-                waktuObj: new Date().toISOString(), // Untuk sorting & filtering valid
+                waktuObj: new Date().toISOString(),
                 waktu: new Date().toLocaleString('id-ID'),
                 totalNota: total, kasir: userAktif ? userAktif.nama : "Kasir", bayar: bayar,
                 tipePesanan: document.getElementById('tipe-pesanan').value, 
@@ -968,7 +954,6 @@
         }
 
         function eksekusiCheckout(dataTransaksi) {
-            // Potong Stok
             dataTransaksi.items.forEach(item => {
                 let idx = DB.produkList.findIndex(p => p.id === item.id && p.kios === item.kios);
                 if(idx !== -1) DB.produkList[idx].stok -= item.qty;
@@ -978,7 +963,7 @@
             saveDatabase();
             
             cetakNotaHTML(dataTransaksi, dataTransaksi.bayar - dataTransaksi.totalNota);
-            eksekusiCetakOtomatisSistem(dataTransaksi); // Cetak Bluetooth & RawBT
+            eksekusiCetakOtomatisSistem(dataTransaksi);
             
             keranjang = []; 
             document.getElementById('input-bayar').value = ''; 
@@ -998,7 +983,6 @@
             
             eksekusiCheckout(dataTransaksi);
 
-            // MODIFIKASI: Menambahkan popup notifikasi sukses & jumlah kembalian tunai
             Swal.fire({
                 icon: 'success',
                 title: 'Transaksi Tunai Sukses!',
@@ -1027,7 +1011,6 @@
                 kartu.saldo -= total;
                 let dataTransaksi = buatDataTransaksi(total, total);
                 
-                // Tambah ke riwayat kartu
                 kartu.riwayat.push({
                     tanggal: new Date().toLocaleString('id-ID'),
                     jenis: 'Pembayaran', nominal: total,
@@ -1044,11 +1027,16 @@
         }
 
         async function scanNFCToInput(targetInputId, callback = null, customText = 'Dekatkan kartu ke bagian sensor NFC perangkat.') {
+            // FIX NFC AGAR TIDAK CRASH DI APK
             if (!('NDEFReader' in window)) {
-                Swal.fire('NFC Tidak Didukung', 'Gunakan Chrome Android berkemampuan NFC.', 'error');
+                Swal.fire({
+                    icon: 'warning',
+                    title: 'Fitur Dibatasi',
+                    text: 'Fitur NFC tidak didukung secara penuh di dalam APK ini. Untuk menggunakan fitur Tap NFC, silakan buka aplikasi ini langsung menggunakan Google Chrome.'
+                });
                 return;
             }
-            if(isScanningNFC) return; // Mutex
+            if(isScanningNFC) return;
 
             isScanningNFC = true;
             Swal.fire({
@@ -1095,7 +1083,6 @@
         function startNFCScan(context) { 
             scanNFCToInput(null, (cardId) => {
                 if(context === 'pos') {
-                    // Coba cari produk berdasarkan ID kartu (jika produk pakai tag NFC)
                     tambahKeKeranjang(cardId); 
                 }
             }); 
@@ -1324,11 +1311,9 @@
             let now = new Date();
 
             DB.riwayatPenjualan.forEach((nota) => {
-                // Tentukan Date dari objek nota (fallback parsing 'waktu' jika waktuObj gak ada)
                 let notaDate = nota.waktuObj ? new Date(nota.waktuObj) : new Date(nota.waktu.split(',')[0].split('/').reverse().join('-'));
-                if (isNaN(notaDate)) notaDate = new Date(); // Fallback terakhir
+                if (isNaN(notaDate)) notaDate = new Date(); 
 
-                // 1. FILTER TANGGAL
                 let includeDate = true;
                 if(dateType === 'today') {
                     includeDate = notaDate.toDateString() === now.toDateString();
@@ -1345,11 +1330,9 @@
 
                 if(!includeDate) return;
 
-                // 2. FILTER KIOS
                 let filteredItems = nota.items.filter(item => filterKios === 'ALL' || item.kios === filterKios);
                 if(filteredItems.length === 0) return;
 
-                // 3. FILTER PENCARIAN (Search)
                 let itemNames = filteredItems.map(i => i.nama.toLowerCase()).join(' ');
                 if(searchKey !== '') {
                     if(!nota.idNota.toLowerCase().includes(searchKey) && 
@@ -1359,7 +1342,6 @@
                     }
                 }
 
-                // Kalkulasi
                 let subtotalNotaKios = filteredItems.reduce((sum, item) => sum + (item.harga * item.qty), 0);
                 totalOmset += subtotalNotaKios;
 
@@ -1570,6 +1552,16 @@
         // 13. BLUETOOTH PRINTER TERINTEGRASI (REFACTOR FIX & FALLBACK)
         // ==========================================
         async function hubungkanPrinterKios(kiosName) {
+            // FIX 1: Cegah Aplikasi Crash Jika Dibuka via APK
+            if (!navigator.bluetooth || !navigator.bluetooth.requestDevice) {
+                Swal.fire({
+                    icon: 'info',
+                    title: 'Batas Versi APK',
+                    text: 'Fitur tautan Bluetooth manual diblokir oleh APK. Pastikan printer sudah terhubung di menu Pengaturan Bluetooth HP. Saat transaksi selesai, sistem akan otomatis mencetak menggunakan RawBT.'
+                });
+                return; // Hentikan fungsi di sini agar layar tidak putih/error
+            }
+
             try {
                 const device = await navigator.bluetooth.requestDevice({
                     acceptAllDevices: true,
@@ -1600,7 +1592,6 @@
                 printerDevices[kiosName] = device;
                 printerCharacteristics[kiosName] = characteristic;
 
-                // SIMPAN ID PRINTER KE LOCAL STORAGE AGAR TIDAK LUPA SAAT RESTART
                 DB.printerMap[kiosName] = device.id;
                 saveDatabase();
                 
@@ -1611,16 +1602,20 @@
             }
         }
 
-        // FUNGSI BARU: Sambung ulang otomatis dengan fallback yang cerdas
         async function reconnectPrinter(kiosName) {
+            // FIX 1B: Cegah Aplikasi Crash Jika Dibuka via APK
+            if (!navigator.bluetooth || !navigator.bluetooth.getDevices) {
+                Swal.fire({
+                    icon: 'info',
+                    title: 'Batas Versi APK',
+                    text: 'Fitur sambung otomatis hanya berlaku di Web/Chrome PWA. Di dalam APK, aplikasi akan otomatis mencetak menggunakan RawBT.'
+                });
+                return;
+            }
+
             try {
                 let savedDeviceId = DB.printerMap[kiosName];
                 if (!savedDeviceId) throw new Error("Data printer hilang.");
-
-                // Cek apakah browser (Chrome Android lama dsb) mensupport getDevices
-                if (!navigator.bluetooth.getDevices) {
-                    throw new Error("Browser tidak mendukung fitur sambung ulang otomatis di latar belakang.");
-                }
 
                 const devices = await navigator.bluetooth.getDevices();
                 const device = devices.find(d => d.id === savedDeviceId);
@@ -1651,7 +1646,6 @@
                 renderDaftarPrinterStatus();
             } catch (error) {
                 console.warn("Reconnect gagal, mengalihkan ke mode manual:", error);
-                // Jika gagal reconnect otomatis, paksa buka popup native bluetooth dengan ramah
                 Swal.fire({
                     title: 'Sambung Ulang Otomatis Gagal',
                     text: 'Sistem browser telah memutuskan memori, silakan pilih ulang printer Anda di popup selanjutnya.',
@@ -1678,14 +1672,13 @@
             
             container.innerHTML = semuaTarget.map(target => {
                 let terhubung = printerCharacteristics[target] ? true : false;
-                let adaTersimpan = DB.printerMap && DB.printerMap[target]; // Cek apakah pernah ditautkan
+                let adaTersimpan = DB.printerMap && DB.printerMap[target]; 
                 
                 let titleName = target === 'KASIR PUSAT' ? 'KASIR PUSAT (Master Struk Belanja)' : `Kios: ${target}`;
                 
                 let statusText = terhubung ? '🟢 Terhubung (Cetak Otomatis Aktif)' : (adaTersimpan ? '🟡 Riwayat Tersimpan (Klik Sambung Ulang)' : '🔴 Belum Ada Printer');
                 let statusColor = terhubung ? 'var(--success)' : (adaTersimpan ? '#d97706' : 'var(--danger)');
                 
-                // Atur tombol dinamis
                 let btnHtml = '';
                 if (terhubung) {
                     btnHtml = `<button type="button" onclick="hubungkanPrinterKios('${target}')" style="background:var(--blue); color: white; padding:8px 12px; font-size:13px; border:none; border-radius: 4px; cursor:pointer;">🔄 Ganti Printer</button>`;
@@ -1783,16 +1776,14 @@
             let gabunganStrukTextRawBT = "";
             let butuhRawBT = false;
 
-            // Target mencakup Kasir Pusat terlebih dahulu, kemudian semua kios
             let semuaTargetPrint = ['KASIR PUSAT', ...DB.kiosList];
 
             for (let i = 0; i < semuaTargetPrint.length; i++) {
                 let target = semuaTargetPrint[i];
                 let strukKhusus = generateReceiptTextText(dataTransaksi, target);
                 
-                if (!strukKhusus) continue; // Skip jika tidak ada data/barang untuk target ini
+                if (!strukKhusus) continue;
 
-                // Jika printer target ini ditautkan via BLE
                 if (printerCharacteristics[target]) {
                     try {
                         await kirimDataKePrinter(printerCharacteristics[target], strukKhusus);
@@ -1803,22 +1794,30 @@
                         butuhRawBT = true;
                     }
                 } else {
-                    // Jika tidak ada BLE, tampung untuk ditembak ke RawBT
                     let pemisah = (target === 'KASIR PUSAT') ? "=== MASTER STRUK ===\n\n" : `=== RESI ${target} ===\n\n`;
                     gabunganStrukTextRawBT += pemisah + strukKhusus;
                     butuhRawBT = true;
                 }
             }
 
-            // FALLBACK: Tembak ke Android Web Intent RawBT jika dibutuhkan
+            // FIX 2: Trik Link Gaib Untuk Tembus Blokir Halaman URL dari Pembuat APK
             if (butuhRawBT && gabunganStrukTextRawBT.trim() !== "") {
                 setTimeout(() => {
-                    // Bersihkan karakter kontrol biner
                     let teksBersih = gabunganStrukTextRawBT.replace(/[\x00-\x08\x0B-\x0C\x0E-\x1F\x7F-\x9F]/g, '');
-                    
-                    // Format Intent RawBT
                     let intentUrl = "intent:" + encodeURIComponent(teksBersih) + "#Intent;scheme=rawbt;package=ru.a402d.rawbtprinter;end;";
-                    window.location.href = intentUrl;
+                    
+                    let a = document.createElement('a');
+                    a.href = intentUrl;
+                    a.style.display = 'none';
+                    document.body.appendChild(a);
+                    
+                    try {
+                        a.click();
+                    } catch (e) {
+                        console.error("Gagal menembak intent ke RawBT", e);
+                    }
+                    
+                    setTimeout(() => document.body.removeChild(a), 500);
                 }, 800);
             }
         }
@@ -1827,11 +1826,8 @@
         // 14. PENCEGAH REFRESH TIDAK SENGAJA
         // ==========================================
         window.addEventListener('beforeunload', function (e) {
-            // Mengecek apakah ada minimal 1 printer yang sedang terhubung di memori
             let adaKoneksiAktif = Object.values(printerCharacteristics).some(char => char !== null);
-            
             if (adaKoneksiAktif) {
-                // Memicu popup peringatan bawaan browser
                 e.preventDefault();
                 e.returnValue = 'Printer Bluetooth sedang terhubung. Jika halaman dimuat ulang, koneksi akan terputus.';
             }
