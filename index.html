@@ -1,6 +1,10 @@
 <!DOCTYPE html>
 <html lang="id">
 <head>
+    <link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#007bff">
+<link rel="apple-touch-icon" href="icon-192x192.png">
+    
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title> POS - Professional Multi-Kios Edition</title>
@@ -1834,5 +1838,21 @@
         });
 
     </script>
+    
+    <script>
+  if ('serviceWorker' in navigator) {
+    window.addEventListener('load', () => {
+      // Pastikan path pendaftaran mengarah ke /Kasir-kantin-dev/sw.js
+      navigator.serviceWorker.register('/Kasir-kantin-dev/sw.js')
+        .then(registration => {
+          console.log('Service Worker berhasil didaftarkan dengan scope:', registration.scope);
+        })
+        .catch(error => {
+          console.log('Pendaftaran Service Worker gagal:', error);
+        });
+    });
+  }
+    </script>
+    
 </body>
 </html>
