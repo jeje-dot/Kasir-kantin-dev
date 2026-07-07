@@ -2,11 +2,13 @@ const CACHE_NAME = 'kasir-kantin-v1';
 const urlsToCache = [
   '/Kasir-kantin-dev/',
   '/Kasir-kantin-dev/index.html',
-  // WAJIB: Tambahkan path file CSS, JS, dan gambar lain milik Anda di bawah ini
-  // '/Kasir-kantin-dev/style.css',
-  // '/Kasir-kantin-dev/script.js',
-  // '/Kasir-kantin-dev/icon-192x192.png'
+  '/Kasir-kantin-dev/manifest.json',
+  '/Kasir-kantin-dev/icon_mesin_kasir_192x192.png',
+  '/Kasir-kantin-dev/icon_mesin_kasir_512x512.png'
 ];
+
+// ... kode sisa sw.js di bawahnya biarkan tetap sama
+
 
 // Install Service Worker dan simpan file ke cache
 self.addEventListener('install', event => {
