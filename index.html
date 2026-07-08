@@ -1607,7 +1607,39 @@
             }
         }
 
-        async function reconnectPrinter(kiosName) {
+        // =========================================================================
+// FUNCTION PEMBANTU: UNTUK MENGUBAH WARNA STATUS DAN TOMBOL SECARA OTOMATIS
+// =========================================================================
+function updateTampilanTombol(kiosName, deviceName) {
+    // Membuat format ID yang aman (Contoh: "KASIR PUSAT" menjadi "kasir-pusat")
+    // Sederhanakan atau sesuaikan bagian ini jika ID HTML Anda menggunakan format lain
+    const safeId = kiosName.toLowerCase().replace(/[^a-z0-9]/g, '-');
+
+    // 1. Ubah Bulatan Status Menjadi Hijau Terhubung
+    const statusText = document.getElementById('status-text-' + safeId);
+    const statusDot = document.getElementById('status-dot-' + safeId); // jika ada elemen dot terpisah
+    
+    if (statusText) {
+        statusText.innerHTML = `<span style="color: #28a745;">●</span> Terhubung (${deviceName})`;
+    }
+
+    // 2. Sembunyikan Tombol "Sambung Ulang" dan "Tautkan Baru"
+    const btnSambung = document.getElementById('btn-sambung-' + safeId);
+    const btnTautkan = document.getElementById('btn-tautkan-' + safeId);
+    if (btnSambung) btnSambung.style.display = 'none';
+    if (btnTautkan) btnTautkan.style.display = 'none';
+
+    // 3. Munculkan Tombol Biru "Ganti Printer"
+    const btnGanti = document.getElementById('btn-ganti-' + safeId);
+    if (btnGanti) {
+        btnGanti.style.display = 'inline-block';
+    }
+}
+
+// =========================================================================
+// FUNCTION UTAMA: MANAJEMEN KONEKSI PRINTER BLUETOOTH
+// =========================================================================
+async function reconnectPrinter(kiosName) {
     if (!navigator.bluetooth) {
         Swal.fire({ icon: 'info', title: 'Batas Versi', text: 'Tidak mendukung Web Bluetooth.' });
         return;
@@ -1618,6 +1650,7 @@
         const savedPrinterId = localStorage.getItem('printer_id_' + kiosName);
         const savedPrinterName = localStorage.getItem('printer_name_' + kiosName);
 
+        // 1. Cari perangkat di dalam daftar izin Chrome
         if (navigator.bluetooth.getDevices) {
             const devices = await navigator.bluetooth.getDevices();
             
@@ -1629,7 +1662,7 @@
             }
         }
 
-        // Jika printer benar-benar belum pernah didaftarkan di Chrome, buka pop-up manual
+        // 2. Jika benar-benar belum terdaftar, pancing pop-up pencarian manual
         if (!device) {
             device = await navigator.bluetooth.requestDevice({
                 acceptAllDevices: true,
@@ -1639,11 +1672,75 @@
             localStorage.setItem('printer_name_' + kiosName, device.name || '');
         }
 
-        // Jika statusnya sudah terhubung, tidak perlu konek ulang
+        // 3. Jika status internalnya ternyata sudah terhubung
         if (device.gatt.connected) {
+            updateTampilanTombol(kiosName, device.name || 'Kasir');
             Swal.fire({ icon: 'success', title: 'Sudah Terhubung', text: 'Printer aktif.', timer: 1500, showConfirmButton: false });
             return;
         }
+
+        // 4. Membangunkan antena pencari Chrome (Mencegah bug "no longer in range")
+        if (device.watchAdvertisements) {
+            try {
+                await device.watchAdvertisements();
+                // Beri jeda 800 milidetik agar gelombang Bluetooth printer tertangkap sempurna
+                await new Promise(resolve => setTimeout(resolve, 800));
+            } catch (e) {
+                console.log("Fitur watchAdvertisements dilewati.");
+            }
+        }
+
+        // 5. Eksekusi Jabat Tangan Koneksi Utama
+        const server = await device.gatt.connect();
+        
+        // Simpan pembaruan ID terbaru ke memori local
+        localStorage.setItem('printer_id_' + kiosName, device.id);
+        localStorage.setItem('printer_name_' + kiosName, device.name || '');
+
+        // JALUR SUKSES A: Perbarui Tampilan Tombol ke Layar
+        updateTampilanTombol(kiosName, device.name || 'Kasir');
+
+        Swal.fire({
+            icon: 'success',
+            title: 'Tersambung!',
+            text: 'Printer ' + (device.name || 'Kasir') + ' siap digunakan.',
+            timer: 2000,
+            showConfirmButton: false
+        });
+
+    } catch (error) {
+        console.error("Error Bluetooth:", error);
+
+        // 6. SISTEM PENYELAMAT (FALLBACK): Jika Chrome mendadak error/gagal otomatis
+        if (error.message.includes("in range") || error.name === 'NetworkError' || error.name === 'TypeError') {
+            console.log("Memicu fallback otomatis karena kendala sinkronisasi Android...");
+            try {
+                let deviceFallback = await navigator.bluetooth.requestDevice({
+                    acceptAllDevices: true,
+                    optionalServices: ['000018f0-0000-1000-8000-00805f9b34fb']
+                });
+                
+                localStorage.setItem('printer_id_' + kiosName, deviceFallback.id);
+                localStorage.setItem('printer_name_' + kiosName, deviceFallback.name || '');
+                
+                await deviceFallback.gatt.connect();
+                
+                // JALUR SUKSES B (FALLBACK): Perbarui Tampilan Tombol ke Layar
+                updateTampilanTombol(kiosName, deviceFallback.name || 'Kasir');
+
+                Swal.fire({ icon: 'success', title: 'Tersambung!', text: 'Printer siap digunakan.', timer: 2000, showConfirmButton: false });
+                return;
+            } catch (e) {
+                if (e.name === 'NotFoundError') return; // User menekan tombol 'Batal' pada pop-up
+            }
+        }
+
+        if (error.name !== 'NotFoundError') {
+            Swal.fire({ icon: 'error', title: 'Gagal Menyambung', text: error.message });
+        }
+    }
+}
+
 
         // =============================================================
         // PERBAIKAN UTAMA: PAKSA CHROME MEMINDAI ULANG SINYAL PRINTER
