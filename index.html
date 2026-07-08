@@ -1615,49 +1615,61 @@
 
     try {
         let device;
-        // Ambil ID dari memori berdasarkan nama Kios
+        // 1. Ambil ID dan Nama printer yang tersimpan di memori khusus kios ini
         const savedPrinterId = localStorage.getItem('printer_id_' + kiosName);
+        const savedPrinterName = localStorage.getItem('printer_name_' + kiosName);
 
         if (navigator.bluetooth.getDevices) {
             const devices = await navigator.bluetooth.getDevices();
             
-            // ==========================================
-            // KODE DETEKTIF: Memunculkan info ke layar
-            alert("INFO DEBUGGING:\nNama Kios: " + kiosName + "\nID di Memori: " + (savedPrinterId ? savedPrinterId : "KOSONG") + "\nJumlah Printer diizinkan Chrome: " + devices.length);
-            // ==========================================
-
+            // Trik A: Coba cari berdasarkan ID terlebih dahulu
             if (savedPrinterId) {
                 device = devices.find(d => d.id === savedPrinterId);
             }
+            
+            // Trik B (CADANGAN): Jika ID diacak Chrome, cari yang namanya sama di daftar izin Chrome
+            if (!device && savedPrinterName && devices.length > 0) {
+                device = devices.find(d => d.name === savedPrinterName);
+                if (device) {
+                    // Jika ketemu lewat nama, perbarui ID baru dari Chrome ke memori HP
+                    localStorage.setItem('printer_id_' + kiosName, device.id);
+                    console.log("ID Printer diperbarui otomatis berdasarkan kesamaan nama.");
+                }
+            }
         }
 
+        // 2. Jika benar-benar tidak ketemu (perangkat baru/belum pernah ditautkan sama sekali)
         if (!device) {
-            // Jika masuk ke sini, berarti manual
             device = await navigator.bluetooth.requestDevice({
                 acceptAllDevices: true,
                 optionalServices: ['000018f0-0000-1000-8000-00805f9b34fb']
             });
             
-            // Simpan ID yang baru didapat ke memori
+            // Simpan ID dan Nama printernya sekaligus ke memori
             localStorage.setItem('printer_id_' + kiosName, device.id);
+            localStorage.setItem('printer_name_' + kiosName, device.name || '');
         }
 
+        // 3. Proses menyambungkan langsung ke printer
         const server = await device.gatt.connect();
         
+        // Berikan alert sukses yang estetik (akan hilang sendiri dalam 2 detik)
         Swal.fire({
             icon: 'success',
             title: 'Tersambung!',
-            text: 'Printer ' + device.name + ' siap.'
+            text: 'Printer ' + (device.name || 'Kasir') + ' siap digunakan.',
+            timer: 2000,
+            showConfirmButton: false
         });
 
     } catch (error) {
-        console.error("Error:", error);
+        console.error("Error Bluetooth:", error);
         if (error.name !== 'NotFoundError') {
-            // Tampilkan pesan error asli dari Chrome agar kita tahu penyebabnya
-            Swal.fire({ icon: 'error', title: 'Gagal', text: error.message });
+            Swal.fire({ icon: 'error', title: 'Gagal Menyambung', text: error.message });
         }
     }
 }
+
 
 
 
