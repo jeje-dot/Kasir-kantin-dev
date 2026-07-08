@@ -1608,69 +1608,87 @@
         }
 
         async function reconnectPrinter(kiosName) {
+    if (async function reconnectPrinter(kiosName) {
     if (!navigator.bluetooth) {
-        Swal.fire({
-            icon: 'info',
-            title: 'Batas Versi Browser',
-            text: 'Perangkat atau browser ini tidak mendukung Web Bluetooth.'
-        });
+        Swal.fire({ icon: 'info', title: 'Batas Versi', text: 'Tidak mendukung Web Bluetooth.' });
         return;
     }
 
     try {
         let device;
-        
-        // 1. Cek di memori HP, apakah kios ini sudah punya ID printer tersendiri?
+        let isDariMemori = false; // Penanda apakah printer diambil dari ingatan HP
         const savedPrinterId = localStorage.getItem('printer_id_' + kiosName);
 
-        // 2. Coba cari di daftar printer yang sudah diizinkan Chrome
         if (navigator.bluetooth.getDevices) {
             const devices = await navigator.bluetooth.getDevices();
-            
             if (savedPrinterId) {
-                // Cari printer spesifik yang ID-nya cocok dengan milik kios ini
                 device = devices.find(d => d.id === savedPrinterId);
+                
+                if (device) {
+                    isDariMemori = true;
+                    // TRIK 1: Paksa Chrome menyalakan antena scannernya diam-diam
+                    try {
+                        await device.watchAdvertisements();
+                    } catch (e) {
+                        console.log("Fitur antena latar belakang dilewati.");
+                    }
+                }
             }
         }
 
-        // 3. Jika printer untuk kios ini belum pernah tersimpan, minta cari manual
+        // Jika belum pernah tersimpan, langsung buka pencarian manual
         if (!device) {
             device = await navigator.bluetooth.requestDevice({
                 acceptAllDevices: true,
                 optionalServices: ['000018f0-0000-1000-8000-00805f9b34fb']
             });
-            
-            // SIMPAN ID PRINTER INI KE DALAM MEMORI KHUSUS KIOS INI
             localStorage.setItem('printer_id_' + kiosName, device.id);
         }
 
-        // 4. Proses menyambungkan
-        console.log("Menghubungkan ke GATT Server untuk", kiosName);
-        const server = await device.gatt.connect();
-        
-        // 5. Sukses!
-        Swal.fire({
-            icon: 'success',
-            title: 'Tersambung!',
-            text: 'Printer (' + device.name + ') berhasil dikunci untuk ' + kiosName
-        });
+        try {
+            // Coba hubungkan...
+            console.log("Menghubungkan ke GATT Server...");
+            const server = await device.gatt.connect();
+            
+            Swal.fire({ icon: 'success', title: 'Tersambung!', text: 'Printer (' + device.name + ') siap digunakan.' });
+            
+            // -------------------------------------------------------------
+            // PENTING: Masukkan kode lanjutan UI Anda di bawah ini
+            // -------------------------------------------------------------
 
-        // -------------------------------------------------------------
-        // PENTING: Jangan lupa masukkan kode lanjutan Anda di bawah ini
-        // (Misalnya kode untuk mengaktifkan status hijau di tombol)
-        // -------------------------------------------------------------
+        } catch (koneksiError) {
+            // TRIK 2: Jika sambung otomatis gagal karena Chrome tertidur
+            if (isDariMemori) {
+                console.log("Chrome gagal auto-connect. Memancing ulang pop-up scanner...");
+                
+                // Sistem otomatis memanggil pop-up agar Anda tidak perlu klik manual "Tautkan"
+                device = await navigator.bluetooth.requestDevice({
+                    acceptAllDevices: true,
+                    optionalServices: ['000018f0-0000-1000-8000-00805f9b34fb']
+                });
+                localStorage.setItem('printer_id_' + kiosName, device.id);
+                
+                // Langsung hubungkan setelah dipilih
+                const server = await device.gatt.connect();
+                Swal.fire({ icon: 'success', title: 'Tersambung!', text: 'Printer (' + device.name + ') siap digunakan.' });
+                
+                // -------------------------------------------------------------
+                // PENTING: Masukkan kode lanjutan UI Anda di bawah ini juga
+                // -------------------------------------------------------------
+            } else {
+                // Jika error lain, lempar ke bawah
+                throw koneksiError;
+            }
+        }
 
     } catch (error) {
-        console.error("Error koneksi:", error);
+        console.error("Error:", error);
         if (error.name !== 'NotFoundError') {
-            Swal.fire({
-                icon: 'error',
-                title: 'Gagal Menyambung',
-                text: 'Pastikan Bluetooth aktif, printer menyala, atau coba muat ulang halaman.'
-            });
+            Swal.fire({ icon: 'error', title: 'Gagal Menyambung', text: error.message });
         }
     }
 }
+
 
 
         async function handlePrinterDisconnect(kiosName, device) {
