@@ -1615,45 +1615,49 @@
 
     try {
         let device;
-        // 1. Ambil ID dan Nama printer yang tersimpan di memori khusus kios ini
         const savedPrinterId = localStorage.getItem('printer_id_' + kiosName);
         const savedPrinterName = localStorage.getItem('printer_name_' + kiosName);
 
         if (navigator.bluetooth.getDevices) {
             const devices = await navigator.bluetooth.getDevices();
             
-            // Trik A: Coba cari berdasarkan ID terlebih dahulu
             if (savedPrinterId) {
                 device = devices.find(d => d.id === savedPrinterId);
             }
-            
-            // Trik B (CADANGAN): Jika ID diacak Chrome, cari yang namanya sama di daftar izin Chrome
-            if (!device && savedPrinterName && devices.length > 0) {
+            if (!device && savedPrinterName) {
                 device = devices.find(d => d.name === savedPrinterName);
-                if (device) {
-                    // Jika ketemu lewat nama, perbarui ID baru dari Chrome ke memori HP
-                    localStorage.setItem('printer_id_' + kiosName, device.id);
-                    console.log("ID Printer diperbarui otomatis berdasarkan kesamaan nama.");
-                }
             }
         }
 
-        // 2. Jika benar-benar tidak ketemu (perangkat baru/belum pernah ditautkan sama sekali)
+        // Jika printer benar-benar belum pernah didaftarkan di Chrome, buka pop-up manual
         if (!device) {
             device = await navigator.bluetooth.requestDevice({
                 acceptAllDevices: true,
                 optionalServices: ['000018f0-0000-1000-8000-00805f9b34fb']
             });
-            
-            // Simpan ID dan Nama printernya sekaligus ke memori
             localStorage.setItem('printer_id_' + kiosName, device.id);
             localStorage.setItem('printer_name_' + kiosName, device.name || '');
         }
 
-        // 3. Proses menyambungkan langsung ke printer
+        // Jika statusnya sudah terhubung, tidak perlu konek ulang
+        if (device.gatt.connected) {
+            Swal.fire({ icon: 'success', title: 'Sudah Terhubung', text: 'Printer aktif.', timer: 1500, showConfirmButton: false });
+            return;
+        }
+
+        // =============================================================
+        // PERBAIKAN UTAMA: PAKSA CHROME MEMINDAI ULANG SINYAL PRINTER
+        // =============================================================
+        if (device.watchAdvertisements) {
+            console.log("Membangunkan antena Chrome untuk mencari sinyal printer...");
+            await device.watchAdvertisements();
+            // Beri jeda 1 detik agar Chrome selesai menangkap gelombang Bluetooth printer
+            await new Promise(resolve => setTimeout(resolve, 1000));
+        }
+
+        // Coba hubungkan setelah dipancing
         const server = await device.gatt.connect();
         
-        // Berikan alert sukses yang estetik (akan hilang sendiri dalam 2 detik)
         Swal.fire({
             icon: 'success',
             title: 'Tersambung!',
@@ -1664,11 +1668,36 @@
 
     } catch (error) {
         console.error("Error Bluetooth:", error);
+
+        // =============================================================
+        // FITUR PENYELAMAT: JIKA CHROME TETAP EROR "NO LONGER IN RANGE"
+        // =============================================================
+        if (error.message.includes("in range") || error.name === 'NetworkError') {
+            console.log("Memicu fallback otomatis karena bug range Chrome...");
+            try {
+                // Langsung buka jendela pasang baru tanpa membuat aplikasi crash/macet
+                let deviceFallback = await navigator.bluetooth.requestDevice({
+                    acceptAllDevices: true,
+                    optionalServices: ['000018f0-0000-1000-8000-00805f9b34fb']
+                });
+                
+                localStorage.setItem('printer_id_' + kiosName, deviceFallback.id);
+                localStorage.setItem('printer_name_' + kiosName, deviceFallback.name || '');
+                
+                await deviceFallback.gatt.connect();
+                Swal.fire({ icon: 'success', title: 'Tersambung!', text: 'Printer siap digunakan.', timer: 2000, showConfirmButton: false });
+                return;
+            } catch (e) {
+                if (e.name === 'NotFoundError') return; // User menekan tombol batalkan/cancel
+            }
+        }
+
         if (error.name !== 'NotFoundError') {
             Swal.fire({ icon: 'error', title: 'Gagal Menyambung', text: error.message });
         }
     }
 }
+
 
 
 
