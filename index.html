@@ -1608,64 +1608,65 @@
         }
 
         async function reconnectPrinter(kiosName) {
-    // 1. Pengecekan Utama: Apakah browser mendukung Web Bluetooth sama sekali?
     if (!navigator.bluetooth) {
         Swal.fire({
             icon: 'info',
-            title: 'Batas Versi Browser/APK',
-            text: 'Perangkat atau browser ini tidak mendukung Web Bluetooth. (Gunakan RawBT jika Anda di dalam APK).'
+            title: 'Batas Versi Browser',
+            text: 'Perangkat atau browser ini tidak mendukung Web Bluetooth.'
         });
         return;
     }
 
     try {
         let device;
+        
+        // 1. Cek di memori HP, apakah kios ini sudah punya ID printer tersendiri?
+        const savedPrinterId = localStorage.getItem('printer_id_' + kiosName);
 
-        // 2. Coba sambung otomatis HANYA JIKA fitur getDevices didukung browser
+        // 2. Coba cari di daftar printer yang sudah diizinkan Chrome
         if (navigator.bluetooth.getDevices) {
             const devices = await navigator.bluetooth.getDevices();
-            if (devices.length > 0) {
-                device = devices[0];
-                console.log("Menemukan printer tersimpan:", device.name);
+            
+            if (savedPrinterId) {
+                // Cari printer spesifik yang ID-nya cocok dengan milik kios ini
+                device = devices.find(d => d.id === savedPrinterId);
             }
         }
 
-        // 3. Jika tidak ada yang tersimpan atau browser tidak mendukung getDevices,
-        // buka pop-up pencarian agar pengguna memilih printer secara manual.
+        // 3. Jika printer untuk kios ini belum pernah tersimpan, minta cari manual
         if (!device) {
             device = await navigator.bluetooth.requestDevice({
-                // Catatan: Jika printer thermal Anda punya spesifikasi UUID tertentu, 
-                // ubah acceptAllDevices menjadi false dan masukkan UUID-nya.
                 acceptAllDevices: true,
-                optionalServices: ['000018f0-0000-1000-8000-00805f9b34fb'] // Ini UUID standar printer thermal
+                optionalServices: ['000018f0-0000-1000-8000-00805f9b34fb']
             });
+            
+            // SIMPAN ID PRINTER INI KE DALAM MEMORI KHUSUS KIOS INI
+            localStorage.setItem('printer_id_' + kiosName, device.id);
         }
 
-        // 4. Proses koneksi Bluetooth
-        console.log("Menghubungkan ke GATT Server...");
+        // 4. Proses menyambungkan
+        console.log("Menghubungkan ke GATT Server untuk", kiosName);
         const server = await device.gatt.connect();
         
-        // 5. Berhasil! Munculkan notifikasi sukses
+        // 5. Sukses!
         Swal.fire({
             icon: 'success',
             title: 'Tersambung!',
-            text: 'Printer ' + device.name + ' siap digunakan.'
+            text: 'Printer (' + device.name + ') berhasil dikunci untuk ' + kiosName
         });
 
         // -------------------------------------------------------------
-        // PENTING: Masukkan kode lanjutan Anda di bawah ini
-        // (Misalnya kode untuk menginisialisasi variabel printer Anda)
+        // PENTING: Jangan lupa masukkan kode lanjutan Anda di bawah ini
+        // (Misalnya kode untuk mengaktifkan status hijau di tombol)
         // -------------------------------------------------------------
 
     } catch (error) {
         console.error("Error koneksi:", error);
-        
-        // Abaikan error jika pengguna hanya menekan tombol "Batal" pada pop-up pencarian Bluetooth
         if (error.name !== 'NotFoundError') {
             Swal.fire({
                 icon: 'error',
                 title: 'Gagal Menyambung',
-                text: 'Pastikan Bluetooth aktif, izin lokasi Chrome menyala, dan printer dalam keadaan hidup.'
+                text: 'Pastikan Bluetooth aktif, printer menyala, atau coba muat ulang halaman.'
             });
         }
     }
