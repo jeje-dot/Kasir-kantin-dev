@@ -1689,30 +1689,7 @@ async function reconnectPrinter(kiosName) {
 // FUNCTION PEMBANTU: UNTUK MENGUBAH WARNA STATUS DAN TOMBOL SECARA OTOMATIS
 // =========================================================================
 function updateTampilanTombol(kiosName, deviceName) {
-    // Membuat format ID yang aman (Contoh: "KASIR PUSAT" menjadi "kasir-pusat")
-    // Sederhanakan atau sesuaikan bagian ini jika ID HTML Anda menggunakan format lain
-    const safeId = kiosName.toLowerCase().replace(/[^a-z0-9]/g, '-');
-
-    // 1. Ubah Bulatan Status Menjadi Hijau Terhubung
-    const statusText = document.getElementById('status-text-' + safeId);
-    const statusDot = document.getElementById('status-dot-' + safeId); // jika ada elemen dot terpisah
-    
-    if (statusText) {
-        statusText.innerHTML = `<span style="color: #28a745;">●</span> Terhubung (${deviceName})`;
-    }
-
-    // 2. Sembunyikan Tombol "Sambung Ulang" dan "Tautkan Baru"
-    const btnSambung = document.getElementById('btn-sambung-' + safeId);
-    const btnTautkan = document.getElementById('btn-tautkan-' + safeId);
-    if (btnSambung) btnSambung.style.display = 'none';
-    if (btnTautkan) btnTautkan.style.display = 'none';
-
-    // 3. Munculkan Tombol Biru "Ganti Printer"
-    const btnGanti = document.getElementById('btn-ganti-' + safeId);
-    if (btnGanti) {
-        btnGanti.style.display = 'inline-block';
-    }
-}
+ 
 
 // =========================================================================
 // FUNCTION UTAMA: MANAJEMEN KONEKSI PRINTER BLUETOOTH
