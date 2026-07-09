@@ -1556,56 +1556,134 @@
         // ==========================================
         // 13. BLUETOOTH PRINTER TERINTEGRASI (REFACTOR FIX & FALLBACK)
         // ==========================================
-        async function hubungkanPrinterKios(kiosName) {
-            // FIX 1: Cegah Aplikasi Crash Jika Dibuka via APK
-            if (!navigator.bluetooth || !navigator.bluetooth.requestDevice) {
-                Swal.fire({
-                    icon: 'info',
-                    title: 'Batas Versi APK',
-                    text: 'Fitur tautan Bluetooth manual diblokir oleh APK. Pastikan printer sudah terhubung di menu Pengaturan Bluetooth HP. Saat transaksi selesai, sistem akan otomatis mencetak menggunakan RawBT.'
-                });
-                return; // Hentikan fungsi di sini agar layar tidak putih/error
-            }
+        // =========================================================================
+// PERBAIKAN: AUTO RECONNECT YANG 100% SINKRON DENGAN SISTEM CETAK KUSNADI
+// =========================================================================
+async function reconnectPrinter(kiosName) {
+    if (!navigator.bluetooth) {
+        Swal.fire({ icon: 'info', title: 'Batas Versi', text: 'Browser/APK tidak mendukung Web Bluetooth.' });
+        return;
+    }
 
+    try {
+        let device;
+        const savedPrinterId = localStorage.getItem('printer_id_' + kiosName);
+        const savedPrinterName = localStorage.getItem('printer_name_' + kiosName);
+
+        // 1. Cari perangkat di dalam memori Chrome
+        if (navigator.bluetooth.getDevices) {
+            const devices = await navigator.bluetooth.getDevices();
+            if (savedPrinterId) device = devices.find(d => d.id === savedPrinterId);
+            if (!device && savedPrinterName) device = devices.find(d => d.name === savedPrinterName);
+        }
+
+        // 2. Jika belum pernah terdaftar sama sekali, minta manual
+        if (!device) {
+            device = await navigator.bluetooth.requestDevice({
+                acceptAllDevices: true,
+                optionalServices: [
+                    '000018f0-0000-1000-8000-00805f9b34fb', 
+                    '0000ff00-0000-1000-8000-00805f9b34fb', 
+                    '0000ffe0-0000-1000-8000-00805f9b34fb', 
+                    '0000ffe1-0000-1000-8000-00805f9b34fb'
+                ]
+            });
+            localStorage.setItem('printer_id_' + kiosName, device.id);
+            localStorage.setItem('printer_name_' + kiosName, device.name || '');
+            DB.printerMap[kiosName] = device.id;
+            saveDatabase();
+        }
+
+        // 3. JANGAN LONCAT JIKA TERHUBUNG (Harus tetap ambil Characteristic)
+        // Kita pancing antena Chrome
+        if (!device.gatt.connected && device.watchAdvertisements) {
             try {
-                const device = await navigator.bluetooth.requestDevice({
+                await device.watchAdvertisements();
+                await new Promise(resolve => setTimeout(resolve, 800));
+            } catch (e) { console.log("watchAdvertisements dilewati."); }
+        }
+
+        // 4. Jabat Tangan Koneksi Utama
+        const server = await device.gatt.connect();
+        device.addEventListener('gattserverdisconnected', () => handlePrinterDisconnect(kiosName, device));
+        
+        // 5. AMBIL JALUR CETAK (GATT CHARACTERISTIC) - INI YANG BIKIN BISA NGEPRINT!
+        const services = await server.getPrimaryServices();
+        let characteristic = null;
+        for (let service of services) {
+            const characteristics = await service.getCharacteristics();
+            characteristic = characteristics.find(c => c.properties.write || c.properties.writeWithoutResponse);
+            if (characteristic) break;
+        }
+
+        if (!characteristic) throw new Error("Gagal mengambil jalur data cetak dari printer.");
+
+        // 6. SINKRONISASI KE VARIABEL GLOBAL APLIKASI ANDA
+        printerDevices[kiosName] = device;
+        printerCharacteristics[kiosName] = characteristic; // <--- Variabel krusial!
+        DB.printerMap[kiosName] = device.id;
+        
+        localStorage.setItem('printer_id_' + kiosName, device.id);
+        localStorage.setItem('printer_name_' + kiosName, device.name || '');
+        saveDatabase(); // Simpan riwayat sistem Anda
+
+        // 7. RENDER ULANG TAMPILAN (MENGUBAH TOMBOL JADI GANTI PRINTER)
+        renderDaftarPrinterStatus(); // <--- Fungsi ajaib milik Anda yang merubah UI layar
+
+        Swal.fire({
+            icon: 'success',
+            title: 'Tersambung!',
+            text: 'Printer ' + (device.name || 'Kasir') + ' siap mencetak.',
+            timer: 2000,
+            showConfirmButton: false
+        });
+
+    } catch (error) {
+        console.error("Error Bluetooth:", error);
+
+        // 8. SISTEM PENYELAMAT: JIKA CHROME ERROR BUG RANGE
+        if (error.message.includes("in range") || error.name === 'NetworkError' || error.name === 'TypeError') {
+            console.log("Memicu fallback otomatis...");
+            try {
+                let deviceFallback = await navigator.bluetooth.requestDevice({
                     acceptAllDevices: true,
-                    optionalServices: [
-                        '000018f0-0000-1000-8000-00805f9b34fb', 
-                        '0000ff00-0000-1000-8000-00805f9b34fb', 
-                        '0000ffe0-0000-1000-8000-00805f9b34fb', 
-                        '0000ffe1-0000-1000-8000-00805f9b34fb'  
-                    ]
+                    optionalServices: ['000018f0-0000-1000-8000-00805f9b34fb', '0000ff00-0000-1000-8000-00805f9b34fb', '0000ffe0-0000-1000-8000-00805f9b34fb', '0000ffe1-0000-1000-8000-00805f9b34fb']
                 });
                 
-                Swal.fire({ title: 'Menghubungkan...', text: `Menyambungkan ke ${device.name}`, allowOutsideClick: false, didOpen: () => Swal.showLoading() });
-                
-                device.addEventListener('gattserverdisconnected', () => handlePrinterDisconnect(kiosName, device));
+                const serverFallback = await deviceFallback.gatt.connect();
+                deviceFallback.addEventListener('gattserverdisconnected', () => handlePrinterDisconnect(kiosName, deviceFallback));
 
-                const server = await device.gatt.connect();
-                const services = await server.getPrimaryServices();
-                let characteristic = null;
-                
-                for (let service of services) {
+                const servicesFallback = await serverFallback.getPrimaryServices();
+                let characteristicFallback = null;
+                for (let service of servicesFallback) {
                     const characteristics = await service.getCharacteristics();
-                    characteristic = characteristics.find(c => c.properties.write || c.properties.writeWithoutResponse);
-                    if (characteristic) break;
+                    characteristicFallback = characteristics.find(c => c.properties.write || c.properties.writeWithoutResponse);
+                    if (characteristicFallback) break;
                 }
-                
-                if (!characteristic) throw new Error("Karakteristik penulisan printer tidak ditemukan.");
-                
-                printerDevices[kiosName] = device;
-                printerCharacteristics[kiosName] = characteristic;
 
-                DB.printerMap[kiosName] = device.id;
-                saveDatabase();
-                
-                Swal.fire('Berhasil!', `Printer Bluetooth ditautkan ke ${kiosName}!`, 'success');
-                renderDaftarPrinterStatus();
-            } catch (error) {
-                Swal.fire('Gagal Koneksi', error.message, 'error');
+                if(characteristicFallback) {
+                    printerDevices[kiosName] = deviceFallback;
+                    printerCharacteristics[kiosName] = characteristicFallback;
+                    DB.printerMap[kiosName] = deviceFallback.id;
+                    localStorage.setItem('printer_id_' + kiosName, deviceFallback.id);
+                    localStorage.setItem('printer_name_' + kiosName, deviceFallback.name || '');
+                    saveDatabase();
+                    renderDaftarPrinterStatus();
+
+                    Swal.fire({ icon: 'success', title: 'Tersambung!', text: 'Printer siap.', timer: 2000, showConfirmButton: false });
+                }
+                return;
+            } catch (e) {
+                if (e.name === 'NotFoundError') return; 
             }
         }
+
+        if (error.name !== 'NotFoundError') {
+            Swal.fire({ icon: 'error', title: 'Gagal Menyambung', text: error.message });
+        }
+    }
+}
+
 
         // =========================================================================
 // FUNCTION PEMBANTU: UNTUK MENGUBAH WARNA STATUS DAN TOMBOL SECARA OTOMATIS
