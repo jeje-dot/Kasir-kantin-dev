@@ -549,6 +549,88 @@
             DB.produkList = JSON.parse(localStorage.getItem('produk_multikios')) || [
                 { id: "M01", nama: "Nasi Goreng Spesial", harga: 15000, stok: 50, kios: "Kios Makanan" },
                 { id: "D01", nama: "Es Teh Manis Segar", harga: 4000, stok: 100, kios: "Kios Minuman" }
+
+  // Kios 1: Kios Aneka Bakso
+  { id: "KB01", nama: "Bakso Urat Spesial", harga: 20000, stok: 40, kios: "Kios Aneka Bakso" },
+  { id: "KB02", nama: "Bakso Telur Asin", harga: 18000, stok: 35, kios: "Kios Aneka Bakso" },
+  { id: "KB03", nama: "Bakso Mercon Pedas", harga: 22000, stok: 30, kios: "Kios Aneka Bakso" },
+  { id: "KB04", nama: "Bakso Halus Biasa", harga: 15000, stok: 50, kios: "Kios Aneka Bakso" },
+  { id: "KB05", nama: "Mie Ayam Bakso", harga: 20000, stok: 45, kios: "Kios Aneka Bakso" },
+  { id: "KB06", nama: "Pangsit Goreng (Isi 5)", harga: 10000, stok: 60, kios: "Kios Aneka Bakso" },
+
+  // Kios 2: Kios Ayam Geprek
+  { id: "AG01", nama: "Ayam Geprek Original", harga: 15000, stok: 50, kios: "Kios Ayam Geprek" },
+  { id: "AG02", nama: "Ayam Geprek Mozzarella", harga: 22000, stok: 30, kios: "Kios Ayam Geprek" },
+  { id: "AG03", nama: "Ayam Geprek Sambal Matah", harga: 18000, stok: 40, kios: "Kios Ayam Geprek" },
+  { id: "AG04", nama: "Indomie Ayam Geprek", harga: 20000, stok: 45, kios: "Kios Ayam Geprek" },
+  { id: "AG05", nama: "Jamur Crispy Geprek", harga: 12000, stok: 35, kios: "Kios Ayam Geprek" },
+  { id: "AG06", nama: "Tahu Tempe Geprek", harga: 10000, stok: 50, kios: "Kios Ayam Geprek" },
+
+  // Kios 3: Kios Sate Nusantara
+  { id: "SN01", nama: "Sate Ayam Madura (10 Tusuk)", harga: 25000, stok: 40, kios: "Kios Sate Nusantara" },
+  { id: "SN02", nama: "Sate Kambing Muda (10 Tusuk)", harga: 45000, stok: 20, kios: "Kios Sate Nusantara" },
+  { id: "SN03", nama: "Sate Taichan Senayan", harga: 30000, stok: 35, kios: "Kios Sate Nusantara" },
+  { id: "SN04", nama: "Sate Padang", harga: 35000, stok: 25, kios: "Kios Sate Nusantara" },
+  { id: "SN05", nama: "Sate Lilit Bali (5 Tusuk)", harga: 25000, stok: 30, kios: "Kios Sate Nusantara" },
+  { id: "SN06", nama: "Sate Usus Ayam (5 Tusuk)", harga: 15000, stok: 50, kios: "Kios Sate Nusantara" },
+
+  // Kios 4: Kios Martabak Sultan
+  { id: "MS01", nama: "Martabak Manis Coklat Kacang", harga: 35000, stok: 30, kios: "Kios Martabak Sultan" },
+  { id: "MS02", nama: "Martabak Manis Keju Susu", harga: 40000, stok: 25, kios: "Kios Martabak Sultan" },
+  { id: "MS03", nama: "Martabak Telur Spesial (Bebek)", harga: 45000, stok: 20, kios: "Kios Martabak Sultan" },
+  { id: "MS04", nama: "Martabak Telur Kornet Sapi", harga: 50000, stok: 15, kios: "Kios Martabak Sultan" },
+  { id: "MS05", nama: "Martabak Tipker Coklat", harga: 25000, stok: 35, kios: "Kios Martabak Sultan" },
+  { id: "MS06", nama: "Martabak Manis Matcha Keju", harga: 45000, stok: 20, kios: "Kios Martabak Sultan" },
+
+  // Kios 5: Kios Seafood Segar
+  { id: "SF01", nama: "Cumi Saus Padang", harga: 45000, stok: 25, kios: "Kios Seafood Segar" },
+  { id: "SF02", nama: "Udang Asam Manis", harga: 40000, stok: 30, kios: "Kios Seafood Segar" },
+  { id: "SF03", nama: "Kepiting Lada Hitam", harga: 85000, stok: 10, kios: "Kios Seafood Segar" },
+  { id: "SF04", nama: "Kerang Dara Rebus", harga: 25000, stok: 40, kios: "Kios Seafood Segar" },
+  { id: "SF05", nama: "Ikan Gurame Bakar Kecap", harga: 60000, stok: 15, kios: "Kios Seafood Segar" },
+  { id: "SF06", nama: "Cah Kangkung Seafood", harga: 20000, stok: 50, kios: "Kios Seafood Segar" },
+
+  // Kios 6: Kios Nasi Rames
+  { id: "NR01", nama: "Nasi Rames Rendang", harga: 25000, stok: 40, kios: "Kios Nasi Rames" },
+  { id: "NR02", nama: "Nasi Rames Ayam Bakar", harga: 22000, stok: 45, kios: "Kios Nasi Rames" },
+  { id: "NR03", nama: "Nasi Rames Telur Balado", harga: 15000, stok: 50, kios: "Kios Nasi Rames" },
+  { id: "NR04", nama: "Nasi Rames Ikan Tongkol", harga: 18000, stok: 35, kios: "Kios Nasi Rames" },
+  { id: "NR05", nama: "Nasi Rames Kikil Mercon", harga: 20000, stok: 30, kios: "Kios Nasi Rames" },
+  { id: "NR06", nama: "Nasi Rames Teri Kacang", harga: 16000, stok: 40, kios: "Kios Nasi Rames" },
+
+  // Kios 7: Kios Minuman Kekinian
+  { id: "MK01", nama: "Boba Brown Sugar Milk Tea", harga: 22000, stok: 60, kios: "Kios Minuman Kekinian" },
+  { id: "MK02", nama: "Es Kopi Susu Aren", harga: 18000, stok: 75, kios: "Kios Minuman Kekinian" },
+  { id: "MK03", nama: "Taro Latte Blend", harga: 20000, stok: 50, kios: "Kios Minuman Kekinian" },
+  { id: "MK04", nama: "Matcha Frappe", harga: 25000, stok: 40, kios: "Kios Minuman Kekinian" },
+  { id: "MK05", nama: "Thai Tea Original", harga: 15000, stok: 80, kios: "Kios Minuman Kekinian" },
+  { id: "MK06", nama: "Lychee Yakult Squash", harga: 20000, stok: 55, kios: "Kios Minuman Kekinian" },
+
+  // Kios 8: Kios Jajanan Tradisional
+  { id: "JT01", nama: "Kue Pukis (1 Kotak)", harga: 25000, stok: 30, kios: "Kios Jajanan Tradisional" },
+  { id: "JT02", nama: "Klepon Gula Aren (Isi 10)", harga: 15000, stok: 45, kios: "Kios Jajanan Tradisional" },
+  { id: "JT03", nama: "Risoles Mayo (Isi 5)", harga: 20000, stok: 40, kios: "Kios Jajanan Tradisional" },
+  { id: "JT04", nama: "Lemper Ayam (Isi 5)", harga: 18000, stok: 35, kios: "Kios Jajanan Tradisional" },
+  { id: "JT05", nama: "Onde-onde Kacang Hijau (Isi 5)", harga: 15000, stok: 40, kios: "Kios Jajanan Tradisional" },
+  { id: "JT06", nama: "Kue Lumpur Surga", harga: 12000, stok: 50, kios: "Kios Jajanan Tradisional" },
+
+  // Kios 9: Kios Mie Nusantara
+  { id: "MN01", nama: "Mie Goreng Jawa Spesial", harga: 25000, stok: 40, kios: "Kios Mie Nusantara" },
+  { id: "MN02", nama: "Mie Godog Telur Bebek", harga: 28000, stok: 35, kios: "Kios Mie Nusantara" },
+  { id: "MN03", nama: "Mie Aceh Daging Sapi", harga: 35000, stok: 25, kios: "Kios Mie Nusantara" },
+  { id: "MN04", nama: "Mie Aceh Seafood", harga: 40000, stok: 20, kios: "Kios Mie Nusantara" },
+  { id: "MN05", nama: "Kwetiau Goreng Sapi", harga: 30000, stok: 30, kios: "Kios Mie Nusantara" },
+  { id: "MN06", nama: "Bihun Goreng Bakso", harga: 22000, stok: 45, kios: "Kios Mie Nusantara" },
+
+  // Kios 10: Kios Aneka Gorengan
+  { id: "GR01", nama: "Pisang Goreng Madu", harga: 8000, stok: 100, kios: "Kios Aneka Gorengan" },
+  { id: "GR02", nama: "Bakwan Sayur Renyah", harga: 3000, stok: 150, kios: "Kios Aneka Gorengan" },
+  { id: "GR03", nama: "Tahu Isi Pedas (Jejot)", harga: 4000, stok: 120, kios: "Kios Aneka Gorengan" },
+  { id: "GR04", nama: "Tempe Mendoan (Per Lembar)", harga: 5000, stok: 80, kios: "Kios Aneka Gorengan" },
+  { id: "GR05", nama: "Ubi Goreng Manis", harga: 3000, stok: 100, kios: "Kios Aneka Gorengan" },
+  { id: "GR06", nama: "Cireng Rujak (Isi 10)", harga: 15000, stok: 60, kios: "Kios Aneka Gorengan" }
+
+
             ];
             DB.riwayatPenjualan = JSON.parse(localStorage.getItem('riwayat_multikios')) || [];
             
