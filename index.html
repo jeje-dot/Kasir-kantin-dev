@@ -127,7 +127,7 @@
             <p style="margin: 0; opacity: 0.9; font-size: 15px;" id="welcome-user-text">Sistem POS Multi-Kios Terintegrasi.</p>
         </div>
 
-        <h3 style="color: var(--primary); margin-bottom: 15px;">MENU OPERASIONAL (STAFF & OWNER)</h3>
+        <h3 style="color: var(--primary); margin-bottom: 15px;">MENU OPERASIONAL</h3>
         <div class="menu-grid">
             <div class="menu-card" onclick="showSection('pos', 'Mesin Kasir Utama')">
                 <div class="menu-icon">🖥️</div>
@@ -152,15 +152,16 @@
                 <p class="menu-desc">Audit kecocokan stok fisik berkala per kios secara terpisah.</p>
             </div>
             
+            <div class="menu-card" id="staff-menu-sales" onclick="showSection('sales', 'Laporan Finansial Tenant')">
+                <div class="menu-icon">📈</div>
+                <div class="menu-title">Laporan Omset</div>
+                <p class="menu-desc">Rekapitulasi total penjualan, omset, dan log riwayat nota.</p>
+            </div>
+
             <div class="menu-card" id="owner-menu-stock" style="display: none;" onclick="showSection('stock', 'Manajemen Stok Kios')">
                 <div class="menu-icon">📦</div>
                 <div class="menu-title">Kelola Barang</div>
                 <p class="menu-desc">Kelola dan input master data menu makanan/minuman.</p>
-            </div>
-            <div class="menu-card" id="owner-menu-sales" style="display: none;" onclick="showSection('sales', 'Laporan Finansial Tenant')">
-                <div class="menu-icon">📈</div>
-                <div class="menu-title">Laporan Omset</div>
-                <p class="menu-desc">Rekapitulasi total penjualan, omset, dan log riwayat nota.</p>
             </div>
 
             <div class="menu-card" onclick="logout()">
@@ -368,7 +369,9 @@
             <div style="display:flex; justify-content: space-between; align-items:center; border-bottom:2px solid #e2e8f0; padding-bottom:15px; margin-bottom: 15px; flex-wrap: wrap; gap: 15px;">
                 <h2 style="margin:0;">Laporan Omset Pendapatan Pujasera</h2>
                 <div style="display:flex; gap:10px; align-items: center; flex-wrap: wrap;">
-                    <button onclick="exportDatabase()" style="background:var(--blue);">💾 Export Backup (JSON)</button>
+                    <button onclick="exportDatabase()" style="background:var(--blue);">💾 Export Backup</button>
+                    <button onclick="cetakLaporanOmsetKeseluruhan()" style="background:var(--purple);">🖨️ Cetak Laporan</button>
+                    
                     <h3 style="color:var(--success); margin:0; font-size: 20px; margin-left: 15px;" id="total-omset-wrapper">Total: Rp <span id="total-omset-display">0</span></h3>
                 </div>
             </div>
@@ -696,6 +699,7 @@
             }
         }
 
+        // PERBAIKAN: HAK AKSES MENU LAPORAN OMSET DIBUKA
         function lanjutkanLogin() {
             document.getElementById('login-screen').style.display = 'none';
             let badge = document.getElementById('active-user-badge');
@@ -703,12 +707,10 @@
             badge.className = "badge " + (userAktif.role === 'Owner' ? 'badge-owner' : 'badge-staff');
 
             if (userAktif.role === 'Owner') {
-                document.getElementById('owner-menu-stock').style.display = 'flex';
-                document.getElementById('owner-menu-sales').style.display = 'flex';
+                let elStock = document.getElementById('owner-menu-stock'); if(elStock) elStock.style.display = 'flex';
                 document.getElementById('welcome-user-text').innerText = "Mode Akses Penuh Owner.";
             } else {
-                document.getElementById('owner-menu-stock').style.display = 'none';
-                document.getElementById('owner-menu-sales').style.display = 'none';
+                let elStock = document.getElementById('owner-menu-stock'); if(elStock) elStock.style.display = 'none';
                 document.getElementById('welcome-user-text').innerText = "Terminal Operasional Staff Kasir.";
             }
 
@@ -1294,7 +1296,7 @@
         }
 
         // ==========================================
-        // 11. LAPORAN & FILTER
+        // 11. LAPORAN & FILTER & CETAK SEMUA
         // ==========================================
         function toggleCustomDate() {
             let type = document.getElementById('sales-date-type').value;
@@ -1365,6 +1367,101 @@
             document.getElementById('total-omset-display').innerText = totalOmset.toLocaleString('id-ID');
         }
 
+        // PERBAIKAN: Fungsi Cetak Laporan Omset Sesuai Filter ke Bluetooth/RawBT
+        async function cetakLaporanOmsetKeseluruhan() {
+            let filterKios = document.getElementById('sales-kios-filter').value;
+            let dateType = document.getElementById('sales-date-type').value;
+            let searchKey = document.getElementById('sales-search-input').value.toLowerCase().trim();
+            let startDateStr = document.getElementById('sales-date-start').value;
+            let endDateStr = document.getElementById('sales-date-end').value;
+
+            let totalOmset = 0;
+            let now = new Date();
+            let arrCetak = [];
+
+            // Melakukan penyaringan yang sama dengan tabel
+            DB.riwayatPenjualan.forEach((nota) => {
+                let notaDate = nota.waktuObj ? new Date(nota.waktuObj) : new Date(nota.waktu.split(',')[0].split('/').reverse().join('-'));
+                if (isNaN(notaDate)) notaDate = new Date();
+
+                let includeDate = true;
+                if(dateType === 'today') {
+                    includeDate = notaDate.toDateString() === now.toDateString();
+                } else if (dateType === 'week') {
+                    let pastWeek = new Date(now); pastWeek.setDate(now.getDate() - 7);
+                    includeDate = notaDate >= pastWeek && notaDate <= now;
+                } else if (dateType === 'month') {
+                    includeDate = notaDate.getMonth() === now.getMonth() && notaDate.getFullYear() === now.getFullYear();
+                } else if (dateType === 'custom' && startDateStr && endDateStr) {
+                    let s = new Date(startDateStr); s.setHours(0,0,0,0);
+                    let e = new Date(endDateStr); e.setHours(23,59,59,999);
+                    includeDate = notaDate >= s && notaDate <= e;
+                }
+
+                if(!includeDate) return;
+
+                let filteredItems = nota.items.filter(item => filterKios === 'ALL' || item.kios === filterKios);
+                if(filteredItems.length === 0) return;
+
+                let itemNames = filteredItems.map(i => i.nama.toLowerCase()).join(' ');
+                if(searchKey !== '') {
+                    if(!nota.idNota.toLowerCase().includes(searchKey) && !nota.kasir.toLowerCase().includes(searchKey) && !itemNames.includes(searchKey)) return;
+                }
+
+                let subtotalNotaKios = filteredItems.reduce((sum, item) => sum + (item.harga * item.qty), 0);
+                totalOmset += subtotalNotaKios;
+                arrCetak.push({nota: nota, subtotal: subtotalNotaKios});
+            });
+
+            if (arrCetak.length === 0) {
+                Swal.fire('Laporan Kosong', 'Tidak ada riwayat transaksi pada filter ini.', 'info');
+                return;
+            }
+
+            // Menyusun Teks Cetak
+            const INIT = '\x1B\x40'; const CENTER = '\x1B\x61\x01'; const LEFT = '\x1B\x61\x00';
+            const BOLD_ON = '\x1B\x45\x01'; const BOLD_OFF = '\x1B\x45\x00'; const FEED_LINE = '\x0A\x0A\x0A\x0A';
+            let labelWaktu = dateType === 'all' ? 'SEMUA WAKTU' : dateType === 'today' ? 'HARI INI' : dateType === 'week' ? '7 HARI TERAKHIR' : dateType === 'month' ? 'BULAN INI' : 'KUSTOM TGL';
+
+            let text = INIT + CENTER + BOLD_ON + `LAPORAN PENJUALAN\n${DB.settingStruk.namaToko}\n` + BOLD_OFF + LEFT;
+            text += `--------------------------------\n`;
+            text += `Tgl Cetak: ${now.toLocaleString('id-ID')}\n`;
+            text += `Kios     : ${filterKios}\n`;
+            text += `Waktu    : ${labelWaktu}\n`;
+            text += `--------------------------------\n`;
+
+            arrCetak.reverse().forEach(data => {
+                text += `${data.nota.waktu.split(',')[0]} - ${data.nota.idNota}\n`;
+                text += `Subtotal: Rp ${data.subtotal.toLocaleString('id-ID')}\n\n`;
+            });
+
+            text += `--------------------------------\n`;
+            text += BOLD_ON + `TOTAL OMSET: Rp ${totalOmset.toLocaleString('id-ID')}\n` + BOLD_OFF;
+            text += `--------------------------------\n` + FEED_LINE;
+
+            // Mengirim ke Printer KASIR PUSAT atau RawBT
+            if (printerCharacteristics['KASIR PUSAT']) {
+                try {
+                    await kirimDataKePrinter(printerCharacteristics['KASIR PUSAT'], text);
+                    Swal.fire('Berhasil', 'Laporan Omset dikirim ke mesin cetak.', 'success');
+                    return;
+                } catch(e) {
+                    console.warn("Gagal cetak BLE, dialihkan ke RawBT");
+                }
+            }
+
+            let teksBersih = text.replace(/[\x00-\x08\x0B-\x0C\x0E-\x1F\x7F-\x9F]/g, '');
+            let intentUrl = "intent:" + encodeURIComponent(teksBersih) + "#Intent;scheme=rawbt;package=ru.a402d.rawbtprinter;end;";
+            let a = document.createElement('a');
+            a.href = intentUrl;
+            a.style.display = 'none';
+            document.body.appendChild(a);
+            try { a.click(); } catch(e) {}
+            setTimeout(() => document.body.removeChild(a), 500);
+
+            Swal.fire({icon: 'success', title: 'Mencetak...', text: 'Meneruskan laporan ke RawBT.', timer: 1500, showConfirmButton: false});
+        }
+
         function cetakNotaHTML(nota, kembalian) {
             let area = document.getElementById('receipt-print-area');
             let itemsHtml = nota.items.map(i => `
@@ -1393,17 +1490,14 @@
             `;
         }
 
-        // ==========================================
-        // PERBAIKAN: CETAK ULANG VIA BLUETOOTH
-        // ==========================================
+        // PERBAIKAN: Cetak Ulang Dialihkan ke Bluetooth
         function cetakUlangNota(idNota) {
             let nota = DB.riwayatPenjualan.find(n => n.idNota === idNota);
             if(!nota) return;
             
-            // Render sementara
             cetakNotaHTML(nota, Math.max(0, nota.bayar - nota.totalNota));
             
-            // Kirim langsung ke mesin cetak Bluetooth
+            // Perintah cetak Bluetooth / RawBT
             eksekusiCetakOtomatisSistem(nota);
             
             Swal.fire({
@@ -1626,7 +1720,7 @@
         }
 
         // =========================================================================
-        // PERBAIKAN: AUTO RECONNECT LOADING (TANPA MEMAKSA POPUP MANUAL)
+        // PERBAIKAN FINAL: AUTO RECONNECT DENGAN LOOPING AGRESIF (TIDAK MANUAL LAGI)
         // =========================================================================
         async function reconnectPrinter(kiosName) {
             if (!navigator.bluetooth) {
@@ -1635,8 +1729,7 @@
             }
 
             try {
-                // Tampilkan loading agar tidak terlihat freeze saat proses background berjalan
-                Swal.fire({ title: 'Mencari Printer...', text: 'Memeriksa gelombang Bluetooth untuk ' + kiosName, allowOutsideClick: false, didOpen: () => Swal.showLoading() });
+                Swal.fire({ title: 'Menyambungkan Otomatis...', text: 'Mencari printer ' + kiosName, allowOutsideClick: false, didOpen: () => Swal.showLoading() });
 
                 let device;
                 const savedPrinterId = localStorage.getItem('printer_id_' + kiosName);
@@ -1649,7 +1742,7 @@
                     if (!device && savedPrinterName) device = devices.find(d => d.name === savedPrinterName);
                 }
 
-                // 2. Jika belum pernah terdaftar sama sekali, minta secara manual
+                // 2. Jika benar-benar belum pernah terdaftar seumur hidup, minta manual (Hanya terjadi 1x)
                 if (!device) {
                     Swal.close();
                     device = await navigator.bluetooth.requestDevice({
@@ -1665,18 +1758,37 @@
                     Swal.fire({ title: 'Menghubungkan...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
                 }
 
-                // 3. Pancingan otomatis (diperlama 2.5 Detik untuk membangunkan antena Android)
+                // 3. Pancingan otomatis (Membangunkan antena Android)
                 if (!device.gatt.connected && device.watchAdvertisements) {
                     try {
                         Swal.update({ text: 'Membangunkan sinyal printer...' });
                         await device.watchAdvertisements();
-                        await new Promise(resolve => setTimeout(resolve, 2500)); 
+                        await new Promise(resolve => setTimeout(resolve, 1000)); 
                     } catch (e) { console.log("watchAdvertisements dilewati."); }
                 }
 
-                // 4. Jabat Tangan Koneksi Utama
-                Swal.update({ text: 'Menyiapkan mesin cetak...' });
-                const server = await device.gatt.connect();
+                // 4. Jabat Tangan Koneksi dengan LOOPING (Percobaan hingga 3x)
+                let server = null;
+                let isConnected = false;
+                let lastErrorMsg = "";
+
+                for (let i = 1; i <= 3; i++) {
+                    try {
+                        Swal.update({ text: `Menghubungkan... (Percobaan ${i}/3)` });
+                        server = await device.gatt.connect();
+                        isConnected = true;
+                        break; // Jika sukses, keluar dari loop
+                    } catch(e) {
+                        lastErrorMsg = e.message;
+                        if (i < 3) await new Promise(resolve => setTimeout(resolve, 1500)); // Jeda sebelum mencoba lagi
+                    }
+                }
+
+                // Jika sudah 3x dicoba tetap gagal
+                if (!isConnected) {
+                    throw new Error(lastErrorMsg || "Koneksi terputus dari sisi printer.");
+                }
+
                 device.addEventListener('gattserverdisconnected', () => handlePrinterDisconnect(kiosName, device));
                 
                 // 5. AMBIL JALUR CETAK (GATT CHARACTERISTIC)
@@ -1712,28 +1824,22 @@
 
             } catch (error) {
                 console.error("Error Bluetooth:", error);
-                Swal.close(); // Matikan loading jika error
-
-                // 8. SISTEM PENYELAMAT: JIKA PRINTER MASIH TIDUR
-                if (error.message.includes("in range") || error.name === 'NetworkError' || error.name === 'TypeError') {
-                    Swal.fire({
-                        title: 'Printer Sedang Tidur 😴',
-                        text: 'Sistem Android mematikan paksa sinyal pencarian. Klik "Pancing" untuk membangunkannya secara manual.',
-                        icon: 'warning',
-                        showCancelButton: true,
-                        confirmButtonColor: 'var(--purple)',
-                        cancelButtonColor: '#7f8c8d',
-                        cancelButtonText: 'Batal',
-                        confirmButtonText: '⚡ Pancing Printer'
-                    }).then((result) => {
-                        if (result.isConfirmed) {
-                            // Langsung memanggil fungsi tautkan baru agar pengguna tidak perlu repot klik tombol lagi
-                            hubungkanPrinterKios(kiosName); 
-                        }
-                    });
-                } else if (error.name !== 'NotFoundError') {
-                    Swal.fire({ icon: 'error', title: 'Gagal Menyambung', text: error.message });
-                }
+                
+                // Jika error parah setelah 3x percobaan, tampilkan opsi pancing manual
+                Swal.fire({
+                    title: 'Gagal Otomatis',
+                    text: 'Sistem Android memblokir koneksi otomatis atau printer mati. Pesan: ' + error.message,
+                    icon: 'warning',
+                    showCancelButton: true,
+                    confirmButtonColor: 'var(--purple)',
+                    cancelButtonColor: '#7f8c8d',
+                    cancelButtonText: 'Batal',
+                    confirmButtonText: '🔌 Cari Manual'
+                }).then((result) => {
+                    if (result.isConfirmed) {
+                        hubungkanPrinterKios(kiosName); 
+                    }
+                });
             }
         }
 
@@ -1878,7 +1984,7 @@
                 }
             }
 
-            // FIX 2: Trik Link Gaib Untuk Tembus Blokir Halaman URL dari Pembuat APK
+            // Trik Link Gaib Untuk Tembus Blokir Halaman URL dari Pembuat APK
             if (butuhRawBT && gabunganStrukTextRawBT.trim() !== "") {
                 setTimeout(() => {
                     let teksBersih = gabunganStrukTextRawBT.replace(/[\x00-\x08\x0B-\x0C\x0E-\x1F\x7F-\x9F]/g, '');
