@@ -1294,7 +1294,7 @@
         }
 
         // ==========================================
-        // 11. LAPORAN & FILTER (REFACTOR)
+        // 11. LAPORAN & FILTER
         // ==========================================
         function toggleCustomDate() {
             let type = document.getElementById('sales-date-type').value;
@@ -1393,11 +1393,26 @@
             `;
         }
 
+        // ==========================================
+        // PERBAIKAN: CETAK ULANG VIA BLUETOOTH
+        // ==========================================
         function cetakUlangNota(idNota) {
             let nota = DB.riwayatPenjualan.find(n => n.idNota === idNota);
             if(!nota) return;
+            
+            // Render sementara
             cetakNotaHTML(nota, Math.max(0, nota.bayar - nota.totalNota));
-            window.print();
+            
+            // Kirim langsung ke mesin cetak Bluetooth
+            eksekusiCetakOtomatisSistem(nota);
+            
+            Swal.fire({
+                icon: 'success', 
+                title: 'Mencetak Ulang...', 
+                text: 'Nota ' + idNota + ' sedang dikirim ke printer.',
+                timer: 2000,
+                showConfirmButton: false
+            });
         }
 
         function hapusSemuaRiwayat() {
@@ -1557,7 +1572,6 @@
         // 13. BLUETOOTH PRINTER TERINTEGRASI 
         // ==========================================
         async function hubungkanPrinterKios(kiosName) {
-            // FIX 1: Cegah Aplikasi Crash Jika Dibuka via APK
             if (!navigator.bluetooth || !navigator.bluetooth.requestDevice) {
                 Swal.fire({
                     icon: 'info',
@@ -1612,7 +1626,7 @@
         }
 
         // =========================================================================
-        // PERBAIKAN: AUTO RECONNECT YANG 100% SINKRON DENGAN SISTEM CETAK KUSNADI
+        // PERBAIKAN: AUTO RECONNECT LOADING (TANPA MEMAKSA POPUP MANUAL)
         // =========================================================================
         async function reconnectPrinter(kiosName) {
             if (!navigator.bluetooth) {
@@ -1621,6 +1635,9 @@
             }
 
             try {
+                // Tampilkan loading agar tidak terlihat freeze saat proses background berjalan
+                Swal.fire({ title: 'Mencari Printer...', text: 'Memeriksa gelombang Bluetooth untuk ' + kiosName, allowOutsideClick: false, didOpen: () => Swal.showLoading() });
+
                 let device;
                 const savedPrinterId = localStorage.getItem('printer_id_' + kiosName);
                 const savedPrinterName = localStorage.getItem('printer_name_' + kiosName);
@@ -1632,32 +1649,33 @@
                     if (!device && savedPrinterName) device = devices.find(d => d.name === savedPrinterName);
                 }
 
-                // 2. Jika belum pernah terdaftar sama sekali, minta manual
+                // 2. Jika belum pernah terdaftar sama sekali, minta secara manual
                 if (!device) {
+                    Swal.close();
                     device = await navigator.bluetooth.requestDevice({
                         acceptAllDevices: true,
                         optionalServices: [
-                            '000018f0-0000-1000-8000-00805f9b34fb', 
-                            '0000ff00-0000-1000-8000-00805f9b34fb', 
-                            '0000ffe0-0000-1000-8000-00805f9b34fb', 
-                            '0000ffe1-0000-1000-8000-00805f9b34fb'
+                            '000018f0-0000-1000-8000-00805f9b34fb', '0000ff00-0000-1000-8000-00805f9b34fb', '0000ffe0-0000-1000-8000-00805f9b34fb', '0000ffe1-0000-1000-8000-00805f9b34fb'
                         ]
                     });
                     localStorage.setItem('printer_id_' + kiosName, device.id);
                     localStorage.setItem('printer_name_' + kiosName, device.name || '');
                     DB.printerMap[kiosName] = device.id;
                     saveDatabase();
+                    Swal.fire({ title: 'Menghubungkan...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
                 }
 
-                // 3. Kita pancing antena Chrome
+                // 3. Pancingan otomatis (diperlama 2.5 Detik untuk membangunkan antena Android)
                 if (!device.gatt.connected && device.watchAdvertisements) {
                     try {
+                        Swal.update({ text: 'Membangunkan sinyal printer...' });
                         await device.watchAdvertisements();
-                        await new Promise(resolve => setTimeout(resolve, 800));
+                        await new Promise(resolve => setTimeout(resolve, 2500)); 
                     } catch (e) { console.log("watchAdvertisements dilewati."); }
                 }
 
                 // 4. Jabat Tangan Koneksi Utama
+                Swal.update({ text: 'Menyiapkan mesin cetak...' });
                 const server = await device.gatt.connect();
                 device.addEventListener('gattserverdisconnected', () => handlePrinterDisconnect(kiosName, device));
                 
@@ -1694,46 +1712,26 @@
 
             } catch (error) {
                 console.error("Error Bluetooth:", error);
+                Swal.close(); // Matikan loading jika error
 
-                // 8. SISTEM PENYELAMAT: JIKA CHROME ERROR BUG RANGE
+                // 8. SISTEM PENYELAMAT: JIKA PRINTER MASIH TIDUR
                 if (error.message.includes("in range") || error.name === 'NetworkError' || error.name === 'TypeError') {
-                    console.log("Memicu fallback otomatis...");
-                    try {
-                        let deviceFallback = await navigator.bluetooth.requestDevice({
-                            acceptAllDevices: true,
-                            optionalServices: ['000018f0-0000-1000-8000-00805f9b34fb', '0000ff00-0000-1000-8000-00805f9b34fb', '0000ffe0-0000-1000-8000-00805f9b34fb', '0000ffe1-0000-1000-8000-00805f9b34fb']
-                        });
-                        
-                        const serverFallback = await deviceFallback.gatt.connect();
-                        deviceFallback.addEventListener('gattserverdisconnected', () => handlePrinterDisconnect(kiosName, deviceFallback));
-
-                        const servicesFallback = await serverFallback.getPrimaryServices();
-                        let characteristicFallback = null;
-                        for (let service of servicesFallback) {
-                            const characteristics = await service.getCharacteristics();
-                            characteristicFallback = characteristics.find(c => c.properties.write || c.properties.writeWithoutResponse);
-                            if (characteristicFallback) break;
+                    Swal.fire({
+                        title: 'Printer Sedang Tidur 😴',
+                        text: 'Sistem Android mematikan paksa sinyal pencarian. Klik "Pancing" untuk membangunkannya secara manual.',
+                        icon: 'warning',
+                        showCancelButton: true,
+                        confirmButtonColor: 'var(--purple)',
+                        cancelButtonColor: '#7f8c8d',
+                        cancelButtonText: 'Batal',
+                        confirmButtonText: '⚡ Pancing Printer'
+                    }).then((result) => {
+                        if (result.isConfirmed) {
+                            // Langsung memanggil fungsi tautkan baru agar pengguna tidak perlu repot klik tombol lagi
+                            hubungkanPrinterKios(kiosName); 
                         }
-
-                        if(characteristicFallback) {
-                            printerDevices[kiosName] = deviceFallback;
-                            printerCharacteristics[kiosName] = characteristicFallback;
-                            DB.printerMap[kiosName] = deviceFallback.id;
-                            localStorage.setItem('printer_id_' + kiosName, deviceFallback.id);
-                            localStorage.setItem('printer_name_' + kiosName, deviceFallback.name || '');
-                            saveDatabase();
-                            
-                            renderDaftarPrinterStatus();
-
-                            Swal.fire({ icon: 'success', title: 'Tersambung!', text: 'Printer siap.', timer: 2000, showConfirmButton: false });
-                        }
-                        return;
-                    } catch (e) {
-                        if (e.name === 'NotFoundError') return; 
-                    }
-                }
-
-                if (error.name !== 'NotFoundError') {
+                    });
+                } else if (error.name !== 'NotFoundError') {
                     Swal.fire({ icon: 'error', title: 'Gagal Menyambung', text: error.message });
                 }
             }
