@@ -281,7 +281,6 @@
             <!-- SECTION: MEMBER & KARTU (NFC) -->
             <div id="sec-pembayaran" class="dashboard-section">
                 <h2 style="color: var(--primary); margin-bottom: 20px;"><i class="fas fa-id-card"></i> Database Kartu NFC</h2>
-                <!-- (Konten NFC sama seperti sebelumnya) -->
                 <div style="display: flex; gap: 20px; flex-wrap: wrap;">
                     <div style="flex: 1; background: var(--card-bg); padding: 25px; border-radius: 12px; border: 1px solid var(--border);">
                         <h4 style="color: var(--accent); margin-bottom: 15px;"><i class="fas fa-bolt"></i> TOP UP SALDO KARTU</h4>
@@ -336,7 +335,6 @@
 
             <!-- SECTION: LAPORAN & VOID -->
             <div id="sec-laporan" class="dashboard-section">
-                <!-- (Konten Laporan sama seperti sebelumnya) -->
                 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; flex-wrap: wrap; gap: 10px;">
                     <h2 style="color: var(--primary);"><i class="fas fa-file-invoice-dollar"></i> Riwayat Transaksi & Laporan</h2>
                     <div style="background: white; padding: 10px 20px; border-radius: 12px; border: 1px solid var(--border); font-weight: 800;">
@@ -408,7 +406,6 @@
 
             <!-- SECTION: OPNAME -->
             <div id="sec-opname" class="dashboard-section">
-                <!-- (Konten Opname sama seperti sebelumnya) -->
                 <h2 style="color: var(--primary); margin-bottom: 20px;"><i class="fas fa-clipboard-list"></i> Audit Stock Opname (Fisik)</h2>
                 <div style="background: var(--card-bg); padding: 20px; border-radius: 12px; border: 1px solid var(--border); margin-bottom: 20px; display: flex; align-items: center; gap: 15px;">
                     <label style="font-weight: 800; text-transform: uppercase; font-size: 12px; color: var(--text-muted);">Pilih Kios untuk Audit:</label>
@@ -422,8 +419,7 @@
                 </div>
             </div>
 
-            <!-- SECTION: DATA TENANT, KARYAWAN, PENGATURAN -->
-            <!-- (Sisanya sama persis, biarkan untuk kelengkapan) -->
+            <!-- SECTION: DATA TENANT -->
             <div id="sec-tenant" class="dashboard-section">
                 <h2 style="color: var(--primary); margin-bottom: 20px;"><i class="fas fa-store-alt"></i> Manajemen Kios & Tenant</h2>
                 <div style="background: var(--card-bg); padding: 25px; border-radius: 12px; border: 1px solid var(--border); margin-bottom: 20px; max-width: 600px;">
@@ -448,6 +444,7 @@
                 </div>
             </div>
 
+            <!-- SECTION: KARYAWAN -->
             <div id="sec-karyawan" class="dashboard-section">
                 <h2 style="color: var(--primary); margin-bottom: 20px;"><i class="fas fa-users-cog"></i> Hak Akses & Karyawan</h2>
                 <div style="background: var(--card-bg); padding: 25px; border-radius: 12px; border: 1px solid var(--border); margin-bottom: 20px;">
@@ -474,6 +471,7 @@
                 </div>
             </div>
 
+            <!-- SECTION: PENGATURAN -->
             <div id="sec-pengaturan" class="dashboard-section">
                 <h2 style="color: var(--primary); margin-bottom: 20px;"><i class="fas fa-tools"></i> Pengaturan Sistem Terpusat</h2>
                 <div style="display: flex; gap: 20px; flex-wrap: wrap;">
@@ -492,6 +490,7 @@
                             <select id="setting-printer-mode" class="form-control" onchange="gantiModePrinter()">
                                 <option value="browser">Mode Standar Browser (window.print)</option>
                                 <option value="rawbt">Mode Aplikasi Pihak ke-3 (ESC/POS RawBT)</option>
+                                <option value="bluetooth">Mode Bluetooth Nirkabel (Web Bluetooth)</option>
                             </select>
                         </div>
                         <div id="printer-help-browser" style="background: var(--light); padding: 15px; border-radius: 8px; font-size: 13px; line-height: 1.5; color: var(--text-muted);">
@@ -501,6 +500,15 @@
                         <div id="printer-help-rawbt" style="display: none; background: #fffbeb; padding: 15px; border-radius: 8px; font-size: 13px; line-height: 1.5; color: #b45309; border: 1px solid #fde68a;">
                             <b>Perhatian Mode RawBT:</b><br>
                             Membutuhkan aplikasi "RawBT" dari PlayStore. Sistem akan melempar kode teks raw langsung ke aplikasi tanpa preview browser.
+                        </div>
+                        <!-- TAMBAHAN UI BLUETOOTH -->
+                        <div id="printer-help-bluetooth" style="display: none; background: #e0f2fe; padding: 15px; border-radius: 8px; font-size: 13px; line-height: 1.5; color: #0369a1; border: 1px solid #bae6fd;">
+                            <b>Koneksi Web Bluetooth API:</b><br>
+                            Sistem akan langsung mengirim data struk ke Printer Thermal (Support Android Chrome & PC).
+                            <div id="printer-status" style="font-weight:bold; color:var(--danger); margin: 10px 0; font-size: 14px;">❌ Belum Tersambung</div>
+                            <button class="btn-action" style="background: var(--accent); width: 100%; justify-content: center;" onclick="hubungkanPrinterBluetooth()">
+                                <i class="fas fa-search"></i> Cari & Sambungkan Printer
+                            </button>
                         </div>
                         <button class="btn-action btn-outline" style="width: 100%; justify-content: center; margin-top: 20px;" onclick="testCetakPrinter()"><i class="fas fa-check-circle"></i> Uji Coba Cetak</button>
                     </div>
@@ -555,6 +563,10 @@
 
     <!-- JAVASCRIPT LOGIC -->
     <script>
+        // Variabel Bluetooth Nirkabel
+        let btDevice = null; 
+        let btCharacteristic = null;
+
         // ==========================================
         // 1. SISTEM HASH & DATABASE LOCALSTORAGE
         // ==========================================
@@ -566,7 +578,7 @@
             return (hash >>> 0).toString(16);
         }
 
-        let DB = { kiosList: [], produkList: [], riwayatPenjualan: [], karyawanList: [], settingStruk: {}, kartuPelanggan: [], settingPrinter: 'browser' };
+        let DB = { kiosList: [], produkList: [], riwayatPenjualan: [], karyawanList: [], settingStruk: {}, kartuPelanggan: [], settingPrinter: 'browser', printerName: '' };
 
         function initDatabase() {
             let cekKaryawan = localStorage.getItem('karyawan');
@@ -587,6 +599,7 @@
             DB.kartuPelanggan = JSON.parse(localStorage.getItem('kartu_pelanggan')) || [];
             DB.settingStruk = JSON.parse(localStorage.getItem('setting_struk')) || { namaToko: "PUJASERA SEJAHTERA", alamat: "Jl. Raya Kuliner No. 123", footer: "Terima Kasih Atas Kunjungan Anda!" };
             DB.settingPrinter = localStorage.getItem('setting_printer') || 'browser';
+            DB.printerName = localStorage.getItem('printer_name') || "";
 
             DB.karyawanList = JSON.parse(localStorage.getItem('karyawan'));
             if(!DB.karyawanList || DB.karyawanList.length === 0) {
@@ -606,6 +619,7 @@
             localStorage.setItem('setting_struk', JSON.stringify(DB.settingStruk));
             localStorage.setItem('kartu_pelanggan', JSON.stringify(DB.kartuPelanggan));
             localStorage.setItem('setting_printer', DB.settingPrinter);
+            localStorage.setItem('printer_name', DB.printerName || "");
         }
 
         // ==========================================
@@ -646,6 +660,7 @@
             if (userAktif.role === 'Owner') document.getElementById('menu-owner-only').style.display = 'block';
 
             buildDropdowns(); muatDataPengaturanUI(); gantiKiosPOS(); updateDashboard();
+            if(DB.settingPrinter === 'bluetooth') autoConnectPrinter();
         }
 
         function logout() { location.reload(); }
@@ -867,6 +882,7 @@
             
             // Cetak Struk
             if(DB.settingPrinter === 'browser') { cetakNotaHTML(trx); } 
+            else if(DB.settingPrinter === 'bluetooth') { generateTeksStrukBluetooth(trx); }
             else { alert("Fitur RawBT diaktifkan. Anda harus mengarahkan text ini via intent ke RawBT App pada Android."); }
             
             // Reset Kasir
@@ -908,7 +924,91 @@
         }
 
         // ==========================================
-        // 6. FITUR NFC & KARTU (Sama)
+        // FITUR WEB BLUETOOTH API
+        // ==========================================
+        async function generateTeksStrukBluetooth(trx) {
+            let formatLine = (left, right) => {
+                let l = String(left); let r = String(right);
+                let space = 32 - l.length - r.length;
+                return l + ' '.repeat(space > 0 ? space : 1) + r;
+            };
+            let textBT = '\x1B\x61\x01' + DB.settingStruk.namaToko + '\n'; 
+            textBT += '\x1B\x61\x00'; 
+            textBT += DB.settingStruk.alamat + '\n';
+            textBT += '--------------------------------\n';
+            textBT += 'Nota : ' + trx.idNota + '\nKasir: ' + trx.kasir + '\nWaktu: ' + trx.waktu.split(' ')[0] + '\n';
+            textBT += '--------------------------------\n';
+            trx.items.forEach(item => { 
+                let sub = item.harga * item.qty; 
+                textBT += item.nama.substring(0, 32) + '\n';
+                let calc = `  ${item.qty} x ${item.harga.toLocaleString('id-ID')}`;
+                textBT += formatLine(calc, sub.toLocaleString('id-ID')) + '\n';
+                if(item.catatan) textBT += `  * ${item.catatan}\n`;
+            });
+            textBT += '--------------------------------\n';
+            textBT += formatLine('TOTAL', 'Rp ' + trx.totalNota.toLocaleString('id-ID')) + '\n';
+            textBT += formatLine('BAYAR', 'Rp ' + trx.bayar.toLocaleString('id-ID')) + '\n';
+            textBT += formatLine('KEMBALI', 'Rp ' + (trx.bayar - trx.totalNota).toLocaleString('id-ID')) + '\n';
+            textBT += '--------------------------------\n\x1B\x61\x01' + DB.settingStruk.footer + '\n\n\n';
+            await cetakBluetoothRaw(textBT);
+        }
+
+        async function hubungkanPrinterBluetooth() {
+            if (!navigator.bluetooth) return alert("Bluetooth tidak didukung browser ini (Gunakan Chrome/Edge terbaru).");
+            try { 
+                btDevice = await navigator.bluetooth.requestDevice({ filters: [{services: ['000018f0-0000-1000-8000-00805f9b34fb']}], optionalServices: ['000018f0-0000-1000-8000-00805f9b34fb'] }); 
+                const server = await btDevice.gatt.connect(); 
+                const service = await server.getPrimaryService('000018f0-0000-1000-8000-00805f9b34fb'); 
+                btCharacteristic = await service.getCharacteristic('00002af1-0000-1000-8000-00805f9b34fb'); 
+                btDevice.addEventListener('gattserverdisconnected', onPrinterDisconnected); 
+                document.getElementById('printer-status').innerHTML = `<span style="color:var(--success);">✅ Terhubung: ${btDevice.name}</span>`; 
+                if (DB.printerName !== btDevice.name) {
+                    DB.printerName = btDevice.name; saveDatabase();
+                    if(typeof Swal !== 'undefined') Swal.fire('Sukses', `Printer "${btDevice.name}" tersimpan!`, 'success');
+                }
+            } catch (err) { console.error(err); }
+        }
+
+        async function autoConnectPrinter() {
+            if (navigator.bluetooth && navigator.bluetooth.getDevices) {
+                try {
+                    const devices = await navigator.bluetooth.getDevices();
+                    if(!DB.printerName) return; 
+                    for (const device of devices) {
+                        if (device.name !== DB.printerName) continue; 
+                        try {
+                            const server = await device.gatt.connect(); 
+                            const service = await server.getPrimaryService('000018f0-0000-1000-8000-00805f9b34fb'); 
+                            btCharacteristic = await service.getCharacteristic('00002af1-0000-1000-8000-00805f9b34fb'); 
+                            btDevice = device;
+                            device.addEventListener('gattserverdisconnected', onPrinterDisconnected);
+                            let statusEl = document.getElementById('printer-status'); 
+                            if(statusEl) statusEl.innerHTML = `<span style="color:var(--success);">✅ Terhubung Otomatis: ${device.name}</span>`; 
+                            break; 
+                        } catch (e) { console.error("Gagal auto-connect", e); }
+                    }
+                } catch(err) { console.error(err); }
+            }
+        }
+
+        function onPrinterDisconnected(event) { 
+            const device = event.target; let statusEl = document.getElementById('printer-status'); 
+            if(statusEl) statusEl.innerHTML = `<span style="color:var(--warning);">⚠️ Printer Terputus... Mencoba ulang...</span>`; 
+            setTimeout(async () => { try { await device.gatt.connect(); if(statusEl) statusEl.innerHTML = `<span style="color:var(--success);">✅ Terhubung Ulang: ${device.name}</span>`; } catch(e) { if(statusEl) statusEl.innerHTML = `<span style="color:var(--danger);">❌ Gagal menyambung ulang.</span>`; } }, 3000); 
+        }
+
+        async function cetakBluetoothRaw(text) { 
+            if(!btCharacteristic) { if(typeof Swal !== 'undefined') Swal.fire('Error', 'Printer Bluetooth belum terhubung!', 'error'); return false; } 
+            try { 
+                let encoder = new TextEncoder(); let printData = encoder.encode('\x1B\x40' + text + '\n\n\n'); 
+                for(let i = 0; i < printData.length; i += 40) { await btCharacteristic.writeValue(printData.slice(i, i + 40)); await new Promise(r => setTimeout(r, 50)); } 
+                return true; 
+            } catch(e) { console.error(e); alert("Gagal mengirim data ke printer."); return false; } 
+        }
+
+
+        // ==========================================
+        // 6. FITUR NFC & KARTU
         // ==========================================
         let isScanningNFC = false; let nfcAbortController = null;
         async function scanNFCToInput(targetInputId, callback = null) {
@@ -981,7 +1081,7 @@
                 }
             }
         }
-        function cetakUlangNota(idNota) { let trx = DB.riwayatPenjualan.find(t => t.idNota === idNota); if(trx) cetakNotaHTML(trx); }
+        function cetakUlangNota(idNota) { let trx = DB.riwayatPenjualan.find(t => t.idNota === idNota); if(trx) { if(DB.settingPrinter === 'browser') { cetakNotaHTML(trx); } else if(DB.settingPrinter === 'bluetooth') { generateTeksStrukBluetooth(trx); } } }
         function downloadCSVLaporan() { let data = [["ID_Nota", "Waktu", "Kasir", "Metode", "Total", "Status"]]; DB.riwayatPenjualan.forEach(r => { data.push([r.idNota, r.waktu, r.kasir, r.metode, r.totalNota, r.isVoid ? "VOID" : "VALID"]); }); downloadCSV(data, "Laporan_Penjualan.csv"); }
 
         // ==========================================
@@ -1037,8 +1137,17 @@
         // ==========================================
         function muatDataPengaturanUI() { document.getElementById('setting-struk-nama').value = DB.settingStruk.namaToko; document.getElementById('setting-struk-alamat').value = DB.settingStruk.alamat; document.getElementById('setting-struk-footer').value = DB.settingStruk.footer; document.getElementById('setting-printer-mode').value = DB.settingPrinter; gantiModePrinter(); }
         function simpanPengaturanStruk() { DB.settingStruk.namaToko = document.getElementById('setting-struk-nama').value; DB.settingStruk.alamat = document.getElementById('setting-struk-alamat').value; DB.settingStruk.footer = document.getElementById('setting-struk-footer').value; saveDatabase(); document.getElementById('header-app-name').innerText = DB.settingStruk.namaToko; Swal.fire('Sukses', 'Desain kop struk berhasil disimpan!', 'success'); }
-        function gantiModePrinter() { DB.settingPrinter = document.getElementById('setting-printer-mode').value; saveDatabase(); document.getElementById('printer-help-browser').style.display = DB.settingPrinter === 'browser' ? 'block' : 'none'; document.getElementById('printer-help-rawbt').style.display = DB.settingPrinter === 'rawbt' ? 'block' : 'none'; }
-        function testCetakPrinter() { if(DB.settingPrinter === 'browser') { window.print(); } else { alert("Perintah RawBT terkirim! (Akan membuka App Pihak Ke-3 jika ada)."); } }
+        function gantiModePrinter() { DB.settingPrinter = document.getElementById('setting-printer-mode').value; saveDatabase(); document.getElementById('printer-help-browser').style.display = DB.settingPrinter === 'browser' ? 'block' : 'none'; document.getElementById('printer-help-rawbt').style.display = DB.settingPrinter === 'rawbt' ? 'block' : 'none'; document.getElementById('printer-help-bluetooth').style.display = DB.settingPrinter === 'bluetooth' ? 'block' : 'none'; }
+        
+        function testCetakPrinter() { 
+            if(DB.settingPrinter === 'browser') { 
+                window.print(); 
+            } else if (DB.settingPrinter === 'bluetooth') { 
+                generateTeksStrukBluetooth({idNota: 'TEST-123', kasir: userAktif.nama, waktu: new Date().toLocaleString('id-ID'), items: [{nama: 'UJI COBA PRINTER BLUETOOTH', qty: 1, harga: 0, catatan: ''}], totalNota: 0, bayar: 0, metode: 'Tunai'}); 
+            } else { 
+                alert("Perintah RawBT terkirim! (Akan membuka App Pihak Ke-3 jika ada)."); 
+            } 
+        }
 
         function renderKaryawan() { let tbody = document.querySelector('#karyawan-table tbody'); tbody.innerHTML=''; DB.karyawanList.forEach((k, idx) => { tbody.innerHTML += `<tr><td><b>${k.nama}</b></td><td>${k.role}</td><td><span class="badge-kios">${k.kios}</span></td><td>${k.role!=='Owner'?`<button class="btn-action" style="background:var(--danger); padding:6px 12px;" onclick="hapusKaryawan(${idx})"><i class="fas fa-trash"></i></button>`:'-'}</td></tr>`; }); }
         function tambahKaryawan() { let nama = document.getElementById('k-nama').value; let pin = document.getElementById('k-pin').value; let kios = document.getElementById('k-role-kios').value; if(nama && pin) { DB.karyawanList.push({nama, pinHash:hashPIN(pin), role:'Tenant', kios}); saveDatabase(); renderKaryawan(); document.getElementById('k-nama').value=''; document.getElementById('k-pin').value=''; Swal.fire('Sukses', 'Akun Karyawan berhasil dibuat!', 'success'); } }
