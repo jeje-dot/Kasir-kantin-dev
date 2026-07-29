@@ -82,9 +82,13 @@
         .badge-kios { font-size: 10px; color: white; background: var(--accent); padding: 3px 8px; border-radius: 20px; font-weight: bold; margin-bottom: 8px; display: inline-block; }
         .product-price { color: var(--danger); font-weight: 800; font-size: 15px; margin-top: 8px; }
 
-        /* --- CART PANEL (Hanya Muncul di POS) --- */
-        .cart-panel { width: 350px; background: var(--card-bg); border-left: 1px solid var(--border); display: flex; flex-direction: column; z-index: 5; transition: 0.3s ease; }
-        .cart-panel.hidden { display: none !important; }
+        /* --- CART PANEL (DIUBAH MENJADI SLIDING OVERLAY DRAWER) --- */
+        .cart-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); backdrop-filter: blur(2px); z-index: 999; display: none; opacity: 0; transition: opacity 0.3s ease; }
+        .cart-overlay.open { opacity: 1; display: block; }
+        
+        .cart-panel { position: fixed; top: 0; right: -400px; width: 350px; height: 100%; background: var(--card-bg); border-left: 1px solid var(--border); display: flex; flex-direction: column; z-index: 1000; transition: right 0.3s cubic-bezier(0.4, 0, 0.2, 1); box-shadow: -5px 0 25px rgba(0,0,0,0.2); }
+        .cart-panel.open { right: 0; }
+        
         .cart-header { padding: 15px 20px; background: var(--primary); color: white; font-weight: 800; display: flex; justify-content: space-between; align-items: center;}
         .cart-items { flex: 1; overflow-y: auto; padding: 15px; background: var(--light); }
         .cart-item { background: var(--card-bg); border: 1px solid var(--border); border-radius: 10px; padding: 12px; margin-bottom: 10px; box-shadow: 0 1px 3px rgba(0,0,0,0.02); }
@@ -260,6 +264,10 @@
                             <i class="fas fa-search"></i>
                             <input type="text" id="input-barcode" placeholder="Ketik Nama Menu atau Scan..." onkeyup="filterProduk(this.value)">
                         </div>
+                        <!-- TOMBOL BUKA KERANJANG -->
+                        <button class="btn-action" style="background: var(--warning); color: var(--primary); font-weight: 900;" onclick="toggleCart()">
+                            <i class="fas fa-shopping-cart"></i> Keranjang (<span id="cart-badge-qty">0</span>)
+                        </button>
                         <button class="btn-action" style="background: var(--primary);" onclick="startNFCScan('pos')"><i class="fas fa-wifi"></i> Tap NFC</button>
                         <select id="pos-kios-selector" class="form-control" style="width: auto; font-weight: bold; cursor: pointer; border: 2px solid var(--accent); background: white;" onchange="gantiKiosPOS()"></select>
                     </div>
@@ -517,11 +525,17 @@
 
         </main>
 
-        <!-- CART PANEL (KANAN) - HANYA MUNCUL SAAT POS -->
-        <aside class="cart-panel hidden" id="cart-panel">
+        <!-- CART OVERLAY BACKGROUND -->
+        <div class="cart-overlay" id="cart-overlay" onclick="closeCart()"></div>
+
+        <!-- CART PANEL (KANAN) - MUNCUL SEBAGAI DRAWER MENGAMBANG -->
+        <aside class="cart-panel" id="cart-panel">
             <div class="cart-header">
                 <div><i class="fas fa-shopping-cart"></i> KERANJANG</div>
-                <div style="background: rgba(255,255,255,0.2); padding: 4px 12px; border-radius: 20px; font-size: 11px;" id="cart-count">0 Item</div>
+                <div style="display: flex; align-items: center; gap: 15px;">
+                    <div style="background: rgba(255,255,255,0.2); padding: 4px 12px; border-radius: 20px; font-size: 11px;" id="cart-count">0 Item</div>
+                    <button onclick="closeCart()" style="background: transparent; border: none; color: white; cursor: pointer; font-size: 20px;"><i class="fas fa-times-circle"></i></button>
+                </div>
             </div>
             
             <div style="padding: 15px; background: var(--card-bg); border-bottom: 1px solid var(--border);">
@@ -685,7 +699,7 @@
             // Hapus semua status aktif
             document.querySelectorAll('.menu-item').forEach(m => m.classList.remove('active'));
             
-            // Tambahkan status aktif pada menu yang diklik (atau cari elemennya jika el null)
+            // Tambahkan status aktif pada menu yang diklik
             if(el) el.classList.add('active');
             else {
                 let targetEl = Array.from(document.querySelectorAll('.menu-item')).find(m => m.getAttribute('onclick').includes(menuId));
@@ -696,11 +710,12 @@
             document.querySelectorAll('.dashboard-section').forEach(s => s.classList.remove('active'));
             document.getElementById('sec-' + menuId).classList.add('active');
 
-            let cartPanel = document.getElementById('cart-panel');
+            // Pastikan drawer keranjang ditutup ketika pindah-pindah menu
+            closeCart();
+
             if(menuId === 'pos') {
-                cartPanel.classList.remove('hidden'); document.getElementById('input-barcode').focus();
+                document.getElementById('input-barcode').focus();
             } else {
-                cartPanel.classList.add('hidden');
                 if(menuId === 'dashboard') updateDashboard();
                 if(menuId === 'stok') renderStok();
                 if(menuId === 'pembayaran') renderKartu();
@@ -709,6 +724,29 @@
                 if(menuId === 'karyawan') renderKaryawan();
                 if(menuId === 'opname') renderOpname();
             }
+        }
+
+        // FUNGSI BUKA / TUTUP DRAWER KERANJANG
+        function toggleCart() {
+            let panel = document.getElementById('cart-panel');
+            let overlay = document.getElementById('cart-overlay');
+            if(panel.classList.contains('open')) {
+                closeCart();
+            } else {
+                panel.classList.add('open');
+                overlay.style.display = 'block';
+                setTimeout(() => overlay.classList.add('open'), 10);
+            }
+        }
+
+        function closeCart() {
+            let panel = document.getElementById('cart-panel');
+            let overlay = document.getElementById('cart-overlay');
+            panel.classList.remove('open');
+            overlay.classList.remove('open');
+            setTimeout(() => { 
+                if(!overlay.classList.contains('open')) overlay.style.display = 'none'; 
+            }, 300);
         }
 
         function updateDashboard() {
@@ -863,6 +901,10 @@
             }
             document.getElementById('grand-total').innerText = `Rp ${total.toLocaleString('id-ID')}`;
             document.getElementById('cart-count').innerText = `${count} Item`;
+
+            // Update badge keranjang di Header POS
+            let badgeBtn = document.getElementById('cart-badge-qty');
+            if(badgeBtn) badgeBtn.innerText = count;
         }
 
         function tambahUang(nom) { let inp = document.getElementById('input-bayar'); inp.value = parseInt(inp.value || 0) + nom; }
@@ -887,6 +929,9 @@
             
             // Reset Kasir
             keranjang = []; document.getElementById('input-bayar').value = ''; document.getElementById('nomor-meja').value = ''; renderKeranjang(); filterProduk(); 
+            
+            // Sembunyikan Overlay Cart kembali
+            closeCart();
         }
 
         function prosesPembayaranTunai() {
