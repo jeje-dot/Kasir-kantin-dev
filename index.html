@@ -64,7 +64,9 @@
         .stat-title { font-size: 12px; color: var(--text-muted); font-weight: 600; text-transform: uppercase; }
 
         /* --- POS GRID & SIDEBAR KATEGORI --- */
-        .btn-category { padding: 12px; border-radius: 8px; border: none; color: white; font-weight: bold; text-align: left; cursor: pointer; transition: 0.2s; display: flex; align-items: center; gap: 10px; font-size: 13px; }
+        .category-sidebar { width: 180px; background: white; border-right: 1px solid var(--border); padding: 15px; display: flex; flex-direction: column; gap: 10px; overflow-y: auto; transition: all 0.3s ease; }
+        .category-sidebar.collapsed { width: 0; padding: 0; border: none; overflow: hidden; opacity: 0; }
+        .btn-category { padding: 12px; border-radius: 8px; border: none; color: white; font-weight: bold; text-align: left; cursor: pointer; transition: 0.2s; display: flex; align-items: center; gap: 10px; font-size: 13px; white-space: nowrap; }
         .btn-category:hover, .btn-category.active { transform: translateX(5px); filter: brightness(1.1); box-shadow: 0 4px 10px rgba(0,0,0,0.15); }
         
         .top-controls { padding: 15px 20px; background: var(--card-bg); border-bottom: 1px solid var(--border); display: flex; gap: 15px; align-items: center; }
@@ -82,7 +84,7 @@
         .badge-kios { font-size: 10px; color: white; background: var(--accent); padding: 3px 8px; border-radius: 20px; font-weight: bold; margin-bottom: 8px; display: inline-block; }
         .product-price { color: var(--danger); font-weight: 800; font-size: 15px; margin-top: 8px; }
 
-        /* --- CART PANEL (DIUBAH MENJADI SLIDING OVERLAY DRAWER) --- */
+        /* --- CART PANEL (FLOATING OVERLAY DRAWER) --- */
         .cart-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); backdrop-filter: blur(2px); z-index: 999; display: none; opacity: 0; transition: opacity 0.3s ease; }
         .cart-overlay.open { opacity: 1; display: block; }
         
@@ -246,11 +248,11 @@
                 </div>
             </div>
 
-            <!-- SECTION: POS (DIBAGI DUA KOLOM UNTUK KATEGORI & PRODUK) -->
+            <!-- SECTION: POS (KASIR PENUH DENGAN PANEL KATEGORI COLLAPSIBLE) -->
             <div id="sec-pos" class="dashboard-section" style="padding: 0; display: flex; flex-direction: row; height: 100%;">
                 
-                <!-- SIDEBAR KATEGORI -->
-                <div style="width: 180px; background: white; border-right: 1px solid var(--border); padding: 15px; display: flex; flex-direction: column; gap: 10px; overflow-y: auto;">
+                <!-- SIDEBAR KATEGORI (BISA DIBUKA / DITUTUP) -->
+                <div class="category-sidebar" id="category-sidebar">
                     <button class="btn-category active" id="btn-kat-semua" style="background: var(--secondary);" onclick="filterKategori('Semua', this)"><i class="fas fa-th-large"></i> Semua Menu</button>
                     <button class="btn-category" style="background: #f97316;" onclick="filterKategori('Makanan', this)"><i class="fas fa-hamburger"></i> Makanan</button>
                     <button class="btn-category" style="background: #10b981;" onclick="filterKategori('Minuman', this)"><i class="fas fa-glass-cheers"></i> Minuman</button>
@@ -260,6 +262,10 @@
                 <!-- AREA PRODUK KASIR -->
                 <div style="flex: 1; display: flex; flex-direction: column; overflow: hidden;">
                     <div class="top-controls">
+                        <!-- TOMBOL BUKA/TUTUP KATEGORI KIRI -->
+                        <button class="btn-action btn-outline" onclick="toggleCategorySidebar()" title="Buka/Tutup Kategori">
+                            <i class="fas fa-filter"></i> Kategori
+                        </button>
                         <div class="search-bar">
                             <i class="fas fa-search"></i>
                             <input type="text" id="input-barcode" placeholder="Ketik Nama Menu atau Scan..." onkeyup="filterProduk(this.value)">
@@ -679,6 +685,7 @@
 
         function logout() { location.reload(); }
         function toggleSidebar() { document.getElementById('sidebar-menu').classList.toggle('collapsed'); }
+        function toggleCategorySidebar() { document.getElementById('category-sidebar').classList.toggle('collapsed'); }
 
         function buildDropdowns() {
             let optKios = DB.kiosList.map(k => `<option value="${k}">${k}</option>`).join('');
@@ -786,7 +793,7 @@
         }
 
         function downloadTemplateCSV(type) {
-            if(type === 'stok') downloadCSV([["ID_Menu", "Nama_Menu", "Nama_Kios", "Harga_Jual", "Stok_Awal", "Kategori"], ["MIE01", "Mie Ayam Spesial", "Kios Aneka Bakso", "20000", "50", "Makanan"]], "Template_Stok_Menu.csv");
+            if(type === 'stok') downloadCSV([["ID_Menu", "Nama_Menu", "Nama_Kios", "Harga_Jual", "Stok_Awal", "Kategori", "URL_Gambar"], ["MIE01", "Mie Ayam Spesial", "Kios Aneka Bakso", "20000", "50", "Makanan", "https://example.com/gambar.jpg"]], "Template_Stok_Menu.csv");
             if(type === 'kios') downloadCSV([["Nama_Kios"], ["Kios Ayam Geprek"]], "Template_Data_Kios.csv");
             if(type === 'karyawan') downloadCSV([["Nama_Karyawan", "PIN_Angka", "Nama_Kios_Akses"], ["Budi Santoso", "123123", "Kios Ayam Geprek"]], "Template_Karyawan.csv");
         }
@@ -801,9 +808,9 @@
                     let cols = lines[i].split(',').map(c => c.trim().replace(/"/g, ''));
                     
                     if(type === 'stok' && cols.length >= 5) {
-                        let [id, nama, kios, harga, stok, kategori] = cols;
+                        let [id, nama, kios, harga, stok, kategori, gambar] = cols;
                         if(id && DB.kiosList.includes(kios) && !DB.produkList.find(p=>p.id===id)) {
-                            DB.produkList.push({id, nama, kios, harga:parseInt(harga)||0, stok:parseInt(stok)||0, kategori: kategori || "Makanan", gambar: ""}); count++;
+                            DB.produkList.push({id, nama, kios, harga:parseInt(harga)||0, stok:parseInt(stok)||0, kategori: kategori || "Makanan", gambar: gambar || ""}); count++;
                         }
                     }
                     if(type === 'kios' && cols.length >= 1) { let n = cols[0]; if(n && !DB.kiosList.includes(n)) { DB.kiosList.push(n); count++; } }
