@@ -4,6 +4,9 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>POS Pujasera - Ultimate Enterprise Edition</title>
+    
+    <!-- Tambahan Library CryptoJS untuk Hashing yang Lebih Aman -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/crypto-js.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <style>
@@ -98,8 +101,9 @@
         .cart-wrapper { flex: 1; overflow-y: auto; padding: 8px; background: var(--light); border: 1px solid var(--border); border-radius: 10px; margin-bottom: 10px; min-height: 0; }
         .cart-item { background: var(--card-bg); border: 1px solid var(--border); border-radius: 8px; padding: 10px; margin-bottom: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.02); }
         .btn-checkout { width: 100%; background: var(--success); color: white; border: none; padding: 12px; border-radius: 8px; font-size: 14px; font-weight: 800; cursor: pointer; display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; transition: 0.2s; }
-        .btn-checkout:hover { background: #059669; }
-        .btn-nfc { width: 100%; background: var(--primary); color: white; border: none; padding: 12px; border-radius: 8px; font-size: 14px; font-weight: 800; cursor: pointer; display: flex; justify-content: center; align-items: center; gap: 8px; transition: 0.2s; }
+        .btn-checkout:hover { background: #059669; filter: brightness(0.9); }
+        .btn-nfc { width: 100%; background: var(--primary); color: white; border: none; padding: 12px; border-radius: 8px; font-size: 14px; font-weight: 800; cursor: pointer; display: flex; justify-content: center; align-items: center; gap: 8px; transition: 0.2s; margin-bottom: 8px; }
+        .btn-nfc:hover { filter: brightness(0.9); }
         
         .qty-box { display: flex; align-items: center; gap: 6px; margin-top: 8px; }
         .qty-btn { width: 26px; height: 26px; border-radius: 6px; border: 1px solid var(--border); background: var(--light); font-weight: bold; cursor: pointer; transition: 0.2s; }
@@ -346,6 +350,9 @@
                             <button class="btn-checkout" onclick="prosesPembayaranTunai()">
                                 <span>BAYAR TUNAI</span> <i class="fas fa-money-bill-wave"></i>
                             </button>
+                            <button class="btn-checkout" style="background: var(--warning); color: #fff; margin-bottom: 8px;" onclick="bayarPakaiQRIS()">
+                                <span>BAYAR QRIS</span> <i class="fas fa-qrcode"></i>
+                            </button>
                             <button class="btn-nfc" onclick="bayarPakaiKartuNFC()">
                                 <span>TAP KARTU (NFC)</span> <i class="fas fa-wifi"></i>
                             </button>
@@ -580,12 +587,9 @@
         let btDevice = null; 
         let btCharacteristic = null;
 
+        // [Perbaikan Keamanan] Menggunakan CryptoJS SHA256 daripada custom bitwise yang rentan
         function hashPIN(pin) {
-            let str = pin + "POS_ULTIMATE"; 
-            let hash = 0;
-            if (str.length === 0) return hash.toString();
-            for (let i = 0; i < str.length; i++) { hash = ((hash << 5) - hash) + str.charCodeAt(i); hash = hash & hash; }
-            return (hash >>> 0).toString(16);
+            return CryptoJS.SHA256(pin).toString();
         }
 
         let DB = { kiosList: [], produkList: [], riwayatPenjualan: [], karyawanList: [], settingStruk: {}, kartuPelanggan: [], settingPrinter: 'browser', printerName: '' };
@@ -634,35 +638,80 @@
         let userAktif = null; let kiosAktifPOS = ""; let keranjang = []; 
         let kategoriAktif = 'Semua'; 
         let currentQueueFilter = 'ALL'; 
+        
+        // --- Variabel Lockout / Login Terkunci (Acuan: indexmart) ---
+        let isLocked = false;
+        let salahLogCount = 0;
 
         window.onload = () => { initDatabase(); };
 
+        // [Perbaikan Sistem Login] Acuan popup langsung & sistem lockout 
         function actionLogin() {
-            let pinInput = document.getElementById('input-pin').value.trim();
+            if (isLocked) return false;
+
+            let pinInputEl = document.getElementById('input-pin');
+            let pinInput = pinInputEl.value.trim();
             if(!pinInput) return false;
+            
             let inputHash = hashPIN(pinInput);
             let user = DB.karyawanList.find(u => u.pinHash === inputHash);
 
+            pinInputEl.value = ''; // Langsung kosongkan
+
             if(user) {
-                document.getElementById('input-pin').value = ''; // Reset input
+                salahLogCount = 0;
                 userAktif = user; 
                 kiosAktifPOS = user.role === 'Owner' ? DB.kiosList[0] : user.kios;
                 lanjutkanLogin();
             } else {
-                // Hapus input PIN terlebih dahulu
-                document.getElementById('input-pin').value = ''; 
-                
-                // SetTimeout memastikan peringatan error langsung muncul dan browser UI thread ter-update
-                setTimeout(() => {
+                salahLogCount++;
+                if(salahLogCount >= 3) {
+                    triggerLockout();
+                } else {
+                    // Hilangkan setTimeout, panggil SweetAlert secara langsung
                     Swal.fire({
                         icon: 'error',
                         title: 'PIN Salah',
-                        text: 'PIN yang Anda masukkan tidak terdaftar di sistem. Silakan coba lagi.',
+                        text: `PIN tidak terdaftar. Sisa percobaan: ${3 - salahLogCount}`,
                         confirmButtonColor: '#ef4444'
+                    }).then(() => {
+                        pinInputEl.focus();
                     });
-                }, 50);
+                }
             }
             return false; 
+        }
+
+        function triggerLockout() {
+            isLocked = true;
+            let cooldown = 30;
+            let pinInputEl = document.getElementById('input-pin');
+            let btnLogin = document.getElementById('btn-login');
+            
+            pinInputEl.disabled = true;
+            btnLogin.disabled = true;
+            
+            Swal.fire({
+                icon: 'warning',
+                title: 'Akses Terkunci',
+                text: 'Terlalu banyak percobaan salah. Silakan tunggu 30 detik.',
+                showConfirmButton: false,
+                timer: 3000
+            });
+
+            let timer = setInterval(() => {
+                btnLogin.innerText = `TERKUNCI (${cooldown}s)`;
+                cooldown--;
+                if (cooldown < 0) {
+                    clearInterval(timer);
+                    isLocked = false;
+                    salahLogCount = 0;
+                    pinInputEl.disabled = false;
+                    btnLogin.disabled = false;
+                    btnLogin.innerHTML = `LOGIN <i class="fas fa-arrow-right" style="margin-left: 8px;"></i>`;
+                    pinInputEl.focus();
+                }
+            }, 1000);
         }
 
         function lanjutkanLogin() {
@@ -693,42 +742,39 @@
             muatDataPengaturanUI(); 
             gantiKiosPOS(); 
             
-            // Fix: Menjadikan Menu Dashboard otomatis langsung tampil setelah login berhasil
             switchMenu('dashboard');
-            
             if(DB.settingPrinter === 'bluetooth') autoConnectPrinter();
         }
 
         function logout() { location.reload(); }
         function toggleSidebar() { document.getElementById('sidebar-menu').classList.toggle('collapsed'); }
 
+        // [Perbaikan Akses Stock Opname] Kondisi khusus Owner vs Tenant di Stock Opname Dropdown
         function buildDropdowns() {
             let optKios = DB.kiosList.map(k => `<option value="${k}">${k}</option>`).join('');
             let domPos = document.getElementById('pos-kios-selector');
             let domLaporan = document.getElementById('sales-kios-filter');
+            let domOpname = document.getElementById('opname-kios-filter');
             
-            // Atur Dropdown berdasarkan role
             if(userAktif.role === 'Owner') { 
-                domPos.innerHTML = optKios; 
-                domPos.disabled = false; 
+                domPos.innerHTML = optKios; domPos.disabled = false; 
+                domLaporan.innerHTML = `<option value="ALL">-- SEMUA KIOS --</option>` + optKios; domLaporan.disabled = false;
                 
-                domLaporan.innerHTML = `<option value="ALL">-- SEMUA KIOS --</option>` + optKios;
-                domLaporan.disabled = false;
+                // Opname Akses Owner
+                domOpname.innerHTML = optKios; domOpname.disabled = false;
             } else { 
-                domPos.innerHTML = `<option value="${userAktif.kios}">${userAktif.kios}</option>`; 
-                domPos.disabled = true; 
+                domPos.innerHTML = `<option value="${userAktif.kios}">${userAktif.kios}</option>`; domPos.disabled = true; 
+                domLaporan.innerHTML = `<option value="${userAktif.kios}">${userAktif.kios}</option>`; domLaporan.disabled = true; 
                 
-                domLaporan.innerHTML = `<option value="${userAktif.kios}">${userAktif.kios}</option>`;
-                domLaporan.disabled = true; 
+                // Opname Akses Terkunci (Hanya Kios Tenant)
+                domOpname.innerHTML = `<option value="${userAktif.kios}">${userAktif.kios}</option>`; domOpname.disabled = true;
             }
 
             document.getElementById('new-kios').innerHTML = optKios;
-            document.getElementById('opname-kios-filter').innerHTML = optKios;
             document.getElementById('k-role-kios').innerHTML = optKios;
         }
 
         function switchMenu(menuId, el = null) {
-            // Validasi izin akses
             if(userAktif.role !== 'Owner' && (menuId === 'stok' || menuId === 'tenant' || menuId === 'karyawan')) {
                 Swal.fire('Akses Dibatasi', 'Anda tidak memiliki izin mengakses menu ini.', 'warning');
                 return;
@@ -745,7 +791,6 @@
             document.getElementById('sec-' + menuId).classList.add('active');
 
             if(menuId === 'pos') {
-                // Kode document.getElementById('input-barcode').focus(); dihapus di sini agar keyboard HP tidak otomatis muncul
                 updateQueueCounters();
             } else {
                 if(menuId === 'dashboard') updateDashboard();
@@ -765,7 +810,6 @@
             DB.riwayatPenjualan.forEach(r => {
                 if(r.waktu.includes(today)) { 
                     if(!r.isVoid) { 
-                        // Jika tenant, hanya hitung item miliknya atau kios miliknya
                         let validForUser = userAktif.role === 'Owner' || r.items.some(i => i.kios === userAktif.kios);
                         if(validForUser) {
                             todayOmzet += r.totalNota; todayTrx++; 
@@ -784,9 +828,12 @@
             document.getElementById('dash-trx').innerText = todayTrx;
 
             let sortedItems = Object.keys(itemCounter).sort((a,b) => itemCounter[b] - itemCounter[a]).slice(0, 5);
-            let tbody = document.querySelector('#dash-top-items tbody'); tbody.innerHTML = '';
-            if(sortedItems.length === 0) tbody.innerHTML = '<tr><td colspan="2" style="text-align:center; color:gray;">Belum ada penjualan hari ini</td></tr>';
-            sortedItems.forEach(nama => { tbody.innerHTML += `<tr><td><i class="fas fa-fire" style="color:var(--danger); margin-right:5px;"></i> ${nama}</td><td><b>${itemCounter[nama]}</b> porsi</td></tr>`; });
+            let tbody = document.querySelector('#dash-top-items tbody'); 
+            let htmlTemp = '';
+            
+            if(sortedItems.length === 0) htmlTemp = '<tr><td colspan="2" style="text-align:center; color:gray;">Belum ada penjualan hari ini</td></tr>';
+            sortedItems.forEach(nama => { htmlTemp += `<tr><td><i class="fas fa-fire" style="color:var(--danger); margin-right:5px;"></i> ${nama}</td><td><b>${itemCounter[nama]}</b> porsi</td></tr>`; });
+            tbody.innerHTML = htmlTemp;
         }
 
         function downloadCSV(dataArray, filename) {
@@ -826,7 +873,7 @@
             reader.readAsText(file);
         }
 
-        // --- SISTEM POS & ANTRIAN BAWAH (PROSES & SELESAI SAJA) ---
+        // --- SISTEM POS & ANTRIAN BAWAH ---
         function filterKategori(kat) {
             kategoriAktif = kat;
             document.querySelectorAll('.cat-chip').forEach(btn => btn.classList.remove('active'));
@@ -867,9 +914,7 @@
             document.getElementById('q-proses').innerText = cProses;
             document.getElementById('q-selesai').innerText = cSelesai;
 
-            if(currentQueueFilter !== 'ALL') {
-                renderQueueOrProductsContainer();
-            }
+            if(currentQueueFilter !== 'ALL') renderQueueOrProductsContainer();
         }
 
         function renderQueueOrProductsContainer() {
@@ -917,27 +962,26 @@
             let trx = DB.riwayatPenjualan.find(r => r.idNota === idNota);
             if(trx) {
                 trx.statusAntrian = statusTarget;
-                if(statusTarget === 'Selesai') {
-                    trx.waktuSelesaiMs = Date.now();
-                }
+                if(statusTarget === 'Selesai') trx.waktuSelesaiMs = Date.now();
                 saveDatabase();
                 updateQueueCounters();
             }
         }
 
+        // [Perbaikan Performa] Menghindari manipulasi DOM berulang pada innerHTML (DOM Thrashing)
         function filterProduk(keyword = '') {
             if(currentQueueFilter !== 'ALL') return;
             const grid = document.getElementById('product-grid'); 
             if(!grid) return;
-            grid.innerHTML = '';
             
             let filtered = DB.produkList.filter(p => p.kios === kiosAktifPOS && p.stok > 0);
             if (kategoriAktif !== 'Semua') filtered = filtered.filter(p => p.kategori === kategoriAktif);
             if(keyword) filtered = filtered.filter(p => p.nama.toLowerCase().includes(keyword.toLowerCase()) || p.id.toLowerCase().includes(keyword.toLowerCase()));
             
+            let htmlTemp = '';
             filtered.forEach(p => {
                 let imgContent = p.gambar ? `<img src="${p.gambar}" alt="${p.nama}">` : `<i class="fas fa-hamburger"></i>`;
-                grid.innerHTML += `
+                htmlTemp += `
                     <div class="product-card" onclick="tambahKeKeranjang('${p.id}')">
                         <div class="product-img">${imgContent}</div>
                         <div style="font-size: 12px; font-weight: 800; line-height: 1.2; overflow:hidden; text-overflow:ellipsis; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical;">${p.nama}</div>
@@ -947,6 +991,7 @@
                         </div>
                     </div>`;
             });
+            grid.innerHTML = htmlTemp;
         }
 
         function handleBarcode(e) { if (e.key === 'Enter') { let id = document.getElementById('input-barcode').value.trim(); if(id) tambahKeKeranjang(id); document.getElementById('input-barcode').value = ''; } }
@@ -973,13 +1018,13 @@
         function updateCatatan(id, val) { let item = keranjang.find(k => k.id === id); if(item) item.catatan = val; }
 
         function renderKeranjang() {
-            let container = document.getElementById('cart-items-container'); container.innerHTML = ''; let total = 0; let count = 0;
+            let container = document.getElementById('cart-items-container'); let htmlTemp = ''; let total = 0; let count = 0;
             if(keranjang.length === 0) {
-                container.innerHTML = `<div style="text-align: center; color: var(--border); margin-top: 30px;"><i class="fas fa-shopping-basket" style="font-size: 40px; margin-bottom: 10px;"></i><br><span style="color:var(--text-muted); font-size:12px;">Keranjang Kosong</span></div>`;
+                htmlTemp = `<div style="text-align: center; color: var(--border); margin-top: 30px;"><i class="fas fa-shopping-basket" style="font-size: 40px; margin-bottom: 10px;"></i><br><span style="color:var(--text-muted); font-size:12px;">Keranjang Kosong</span></div>`;
             } else {
                 keranjang.forEach(item => {
                     let sub = item.harga * item.qty; total += sub; count += item.qty;
-                    container.innerHTML += `
+                    htmlTemp += `
                         <div class="cart-item">
                             <div style="font-weight: 800; font-size: 12px;">${item.nama}</div>
                             <div style="font-size: 11px; color: var(--accent); font-weight: 800;">Rp ${item.harga.toLocaleString('id-ID')}</div>
@@ -995,6 +1040,7 @@
                         </div>`;
                 });
             }
+            container.innerHTML = htmlTemp;
             document.getElementById('grand-total').innerText = `Rp ${total.toLocaleString('id-ID')}`;
             document.getElementById('cart-count').innerText = `${count}`;
         }
@@ -1037,6 +1083,35 @@
             if(bayar < total) { if(typeof Swal !== 'undefined') Swal.fire('Kurang', 'Uang tunai tidak mencukupi!', 'error'); return; }
             let kembali = bayar - total; prosesCheckout(total, bayar, 'Tunai');
             if(typeof Swal !== 'undefined') Swal.fire({ icon: 'success', title: 'Transaksi Sukses!', html: `Kembalian: <br><span style="font-size:24px; font-weight:900; color:var(--success);">Rp ${kembali.toLocaleString('id-ID')}</span>` });
+        }
+
+        // [Penambahan Fitur QRIS] Integrasi Tombol & Logika QRIS
+        function bayarPakaiQRIS() {
+            if(keranjang.length === 0) return Swal.fire('Error', 'Keranjang masih kosong!', 'error');
+            
+            let total = keranjang.reduce((sum, item) => sum + (item.harga * item.qty), 0);
+            
+            Swal.fire({
+                title: 'Pembayaran QRIS',
+                html: `
+                    <p style="font-size: 13px; color: var(--text-muted);">Arahkan pelanggan untuk scan QR Code di bawah ini.</p>
+                    <div style="background: white; padding: 15px; border-radius: 10px; display: inline-block; margin: 10px 0; border: 2px dashed var(--accent);">
+                        <!-- Menggunakan API publik untuk generate dummy QR code sesuai nominal -->
+                        <img src="https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=DUMMY-QRIS-${total}" alt="QRIS" style="width: 200px; height: 200px;">
+                    </div>
+                    <h3 style="color: var(--primary); font-weight: 900;">Total: Rp ${total.toLocaleString('id-ID')}</h3>
+                    <p style="font-size: 11px; color: var(--danger);">*Pastikan pembayaran telah masuk ke mutasi sebelum klik Konfirmasi.</p>
+                `,
+                showCancelButton: true,
+                confirmButtonText: '<i class="fas fa-check-circle"></i> Dana Sudah Masuk',
+                cancelButtonText: 'Batal',
+                confirmButtonColor: 'var(--success)'
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    prosesCheckout(total, total, 'QRIS');
+                    Swal.fire({ icon: 'success', title: 'Transaksi QRIS Berhasil!', showConfirmButton: false, timer: 1500 });
+                }
+            });
         }
 
         function cetakNotaHTML(trx) {
@@ -1162,15 +1237,15 @@
             });
         }
 
-        // Laporan
+        // [Perbaikan Performa] Menghindari manipulasi DOM berulang (DOM Thrashing) di Laporan
         function renderLaporanPenjualan() {
             let filterKios = document.getElementById('sales-kios-filter').value; 
             let search = document.getElementById('sales-search-input').value.toLowerCase();
-            let tbody = document.querySelector('#sales-history-table tbody'); tbody.innerHTML = ''; 
+            let tbody = document.querySelector('#sales-history-table tbody');
             let totalOmset = 0;
+            let htmlTemp = '';
 
             DB.riwayatPenjualan.forEach(nota => {
-                // Saring item berdasarkan filter / izin tenant
                 let itemsFiltered = nota.items.filter(i => filterKios === 'ALL' || i.kios === filterKios);
                 if(itemsFiltered.length === 0) return;
                 if(search && !nota.idNota.toLowerCase().includes(search) && !nota.kasir.toLowerCase().includes(search)) return;
@@ -1192,8 +1267,9 @@
                     `<button class="btn-action btn-outline" style="padding: 4px 8px; font-size:10px;" onclick="cetakUlangNota('${nota.idNota}')"><i class="fas fa-print"></i></button>
                      <button class="btn-action" style="background:var(--danger); padding: 4px 8px; font-size:10px;" onclick="prosesVoid('${nota.idNota}')">VOID</button>`;
                 
-                tbody.innerHTML += `<tr class="${trClass}"><td><code>${nota.idNota}</code><br><span style="font-size:10px; color:gray;">${nota.waktu}</span></td><td><b>${nota.kasir}</b><br><span style="font-size:10px; color:var(--accent);">${nota.metode}</span></td><td style="font-size:11px; line-height: 1.4;">${detail}</td><td><span style="font-weight:bold; font-size:11px; color:var(--secondary);">${durasiStr}</span></td><td><b style="color: var(--primary);">Rp ${subTotal.toLocaleString('id-ID')}</b></td><td>${actBtn}</td></tr>`;
+                htmlTemp += `<tr class="${trClass}"><td><code>${nota.idNota}</code><br><span style="font-size:10px; color:gray;">${nota.waktu}</span></td><td><b>${nota.kasir}</b><br><span style="font-size:10px; color:var(--accent);">${nota.metode}</span></td><td style="font-size:11px; line-height: 1.4;">${detail}</td><td><span style="font-weight:bold; font-size:11px; color:var(--secondary);">${durasiStr}</span></td><td><b style="color: var(--primary);">Rp ${subTotal.toLocaleString('id-ID')}</b></td><td>${actBtn}</td></tr>`;
             });
+            tbody.innerHTML = htmlTemp;
             document.getElementById('total-omset-display').innerText = `Rp ${totalOmset.toLocaleString('id-ID')}`;
         }
 
@@ -1215,7 +1291,6 @@
                 let trx = DB.riwayatPenjualan.find(t => t.idNota === idNota);
                 if(!trx) return;
 
-                // Cek hak membatalkan pesanan (Hanya owner atau kasir kios yang bersangkutan)
                 let isOwner = otorisator.role === 'Owner';
                 let isKasirKiosTerkait = trx.items.some(i => i.kios === otorisator.kios);
 
@@ -1240,16 +1315,20 @@
         function cetakUlangNota(idNota) { let trx = DB.riwayatPenjualan.find(t => t.idNota === idNota); if(trx) { if(DB.settingPrinter === 'browser') cetakNotaHTML(trx); else if(DB.settingPrinter === 'bluetooth') generateTeksStrukBluetooth(trx); } }
         function downloadCSVLaporan() { let data = [["ID_Nota", "Waktu", "Kasir", "Metode", "Total", "Status"]]; DB.riwayatPenjualan.forEach(r => { data.push([r.idNota, r.waktu, r.kasir, r.metode, r.totalNota, r.isVoid ? "VOID" : "VALID"]); }); downloadCSV(data, "Laporan_Penjualan.csv"); }
 
-        // Stok & Opname dengan Plus/Minus
+        // [Perbaikan Performa] Menghindari manipulasi DOM berulang (DOM Thrashing) di Stok
         function renderStok() {
-            let tbody = document.querySelector('#stock-table tbody'); tbody.innerHTML = '';
+            let tbody = document.querySelector('#stock-table tbody'); 
             let data = userAktif.role === 'Owner' ? DB.produkList : DB.produkList.filter(p => p.kios === userAktif.kios);
+            let htmlTemp = '';
+            
             data.forEach(p => {
-                tbody.innerHTML += `<tr><td><code>${p.id}</code></td><td><b>${p.nama}</b></td><td>${p.kategori}</td><td><span class="badge-kios">${p.kios}</span></td><td>Rp ${p.harga.toLocaleString('id-ID')}</td>
+                htmlTemp += `<tr><td><code>${p.id}</code></td><td><b>${p.nama}</b></td><td>${p.kategori}</td><td><span class="badge-kios">${p.kios}</span></td><td>Rp ${p.harga.toLocaleString('id-ID')}</td>
                     <td><input type="number" value="${p.stok}" class="form-control" style="width:70px; padding:4px;" onchange="updateStokCepat('${p.id}', '${p.kios}', this.value)"></td>
                     <td><button class="btn-action" style="background:var(--danger); padding:4px 10px;" onclick="hapusBarang('${p.id}', '${p.kios}')"><i class="fas fa-trash"></i></button></td></tr>`;
             });
+            tbody.innerHTML = htmlTemp;
         }
+        
         function tambahBarang() {
             let id = document.getElementById('new-barcode').value.trim(); let nama = document.getElementById('new-name').value.trim(); 
             let kategori = document.getElementById('new-kategori').value; let gambar = document.getElementById('new-img-url').value.trim();
@@ -1263,11 +1342,14 @@
         function hapusBarang(id, kios) { DB.produkList = DB.produkList.filter(p => !(p.id === id && p.kios === kios)); saveDatabase(); renderStok(); }
         function updateStokCepat(id, kios, val) { let p = DB.produkList.find(x => x.id === id && x.kios === kios); if(p) { p.stok = parseInt(val||0); saveDatabase(); } }
 
+        // [Perbaikan Performa] Menghindari manipulasi DOM berulang (DOM Thrashing) di Opname
         function renderOpname() {
             let filterKios = document.getElementById('opname-kios-filter').value; 
-            let tbody = document.querySelector('#opname-table tbody'); tbody.innerHTML = '';
+            let tbody = document.querySelector('#opname-table tbody'); 
+            let htmlTemp = '';
+            
             DB.produkList.filter(p => p.kios === filterKios).forEach(p => {
-                tbody.innerHTML += `
+                htmlTemp += `
                     <tr>
                         <td><code>${p.id}</code></td>
                         <td><b>${p.nama}</b></td>
@@ -1277,6 +1359,7 @@
                         <td><button class="btn-action" style="background:var(--accent);" onclick="ajustOpname('${p.id}', '${p.kios}')"><i class="fas fa-check"></i> Audit</button></td>
                     </tr>`;
             });
+            tbody.innerHTML = htmlTemp;
         }
 
         function hitungSelisihOpname(id, stokKomputer) {
@@ -1321,20 +1404,41 @@
         function gantiModePrinter() { DB.settingPrinter = document.getElementById('setting-printer-mode').value; saveDatabase(); document.getElementById('printer-help-browser').style.display = DB.settingPrinter === 'browser' ? 'block' : 'none'; document.getElementById('printer-help-rawbt').style.display = DB.settingPrinter === 'rawbt' ? 'block' : 'none'; document.getElementById('printer-help-bluetooth').style.display = DB.settingPrinter === 'bluetooth' ? 'block' : 'none'; }
         function testCetakPrinter() { if(DB.settingPrinter === 'browser') window.print(); else if(DB.settingPrinter === 'bluetooth') generateTeksStrukBluetooth({idNota: 'TEST', kasir: userAktif.nama, waktu: new Date().toLocaleString('id-ID'), items: [{nama: 'TEST PRINTER', qty: 1, harga: 0, catatan: ''}], totalNota: 0, bayar: 0, metode: 'Tunai'}); }
 
-        function renderKaryawan() { let tbody = document.querySelector('#karyawan-table tbody'); tbody.innerHTML=''; DB.karyawanList.forEach((k, idx) => { tbody.innerHTML += `<tr><td><b>${k.nama}</b></td><td>${k.role}</td><td><span class="badge-kios">${k.kios}</span></td><td>${k.role!=='Owner'?`<button class="btn-action" style="background:var(--danger); padding:4px 10px;" onclick="hapusKaryawan(${idx})"><i class="fas fa-trash"></i></button>`:'-'}</td></tr>`; }); }
+        // [Perbaikan Performa] DOM Thrashing
+        function renderKaryawan() { 
+            let tbody = document.querySelector('#karyawan-table tbody'); 
+            let htmlTemp = '';
+            DB.karyawanList.forEach((k, idx) => { 
+                htmlTemp += `<tr><td><b>${k.nama}</b></td><td>${k.role}</td><td><span class="badge-kios">${k.kios}</span></td><td>${k.role!=='Owner'?`<button class="btn-action" style="background:var(--danger); padding:4px 10px;" onclick="hapusKaryawan(${idx})"><i class="fas fa-trash"></i></button>`:'-'}</td></tr>`; 
+            }); 
+            tbody.innerHTML = htmlTemp;
+        }
         function tambahKaryawan() { let nama = document.getElementById('k-nama').value; let pin = document.getElementById('k-pin').value; let kios = document.getElementById('k-role-kios').value; if(nama && pin) { DB.karyawanList.push({nama, pinHash:hashPIN(pin), role:'Tenant', kios}); saveDatabase(); renderKaryawan(); document.getElementById('k-nama').value=''; document.getElementById('k-pin').value=''; Swal.fire('Sukses', 'Ditambahkan!', 'success'); } }
         function hapusKaryawan(idx) { Swal.fire({ title:'Hapus?', icon:'warning', showCancelButton:true }).then(r => { if(r.isConfirmed) { DB.karyawanList.splice(idx,1); saveDatabase(); renderKaryawan(); } }); }
         
-        function renderKiosManagerList() { let tbody = document.querySelector('#kios-list-table tbody'); tbody.innerHTML=''; DB.kiosList.forEach((k, idx) => { let cnt = DB.produkList.filter(p=>p.kios===k).length; tbody.innerHTML += `<tr><td><b>${k}</b></td><td>${cnt} Menu</td><td><button class="btn-action" style="background:var(--danger); padding:4px 10px;" onclick="hapusKiosDinamis(${idx}, '${k}')"><i class="fas fa-trash"></i> Tutup</button></td></tr>`; }); }
+        // [Perbaikan Performa] DOM Thrashing
+        function renderKiosManagerList() { 
+            let tbody = document.querySelector('#kios-list-table tbody'); 
+            let htmlTemp = '';
+            DB.kiosList.forEach((k, idx) => { 
+                let cnt = DB.produkList.filter(p=>p.kios===k).length; 
+                htmlTemp += `<tr><td><b>${k}</b></td><td>${cnt} Menu</td><td><button class="btn-action" style="background:var(--danger); padding:4px 10px;" onclick="hapusKiosDinamis(${idx}, '${k}')"><i class="fas fa-trash"></i> Tutup</button></td></tr>`; 
+            }); 
+            tbody.innerHTML = htmlTemp;
+        }
         function tambahKiosDinamis() { let n = document.getElementById('new-kios-name').value; if(n && !DB.kiosList.includes(n)) { DB.kiosList.push(n); saveDatabase(); buildDropdowns(); renderKiosManagerList(); document.getElementById('new-kios-name').value = ''; Swal.fire('Sukses', 'Kios dibuka!', 'success'); } }
         function hapusKiosDinamis(idx, n) { Swal.fire({ title:`Tutup kios ${n}?`, icon:'warning', showCancelButton:true }).then(r => { if(r.isConfirmed) { DB.kiosList.splice(idx,1); DB.produkList=DB.produkList.filter(p=>p.kios!==n); saveDatabase(); buildDropdowns(); renderKiosManagerList(); } }); }
         function hapusSemuaRiwayat() { Swal.fire({ title:'Reset log?', icon:'warning', showCancelButton:true }).then(r => { if(r.isConfirmed) { DB.riwayatPenjualan = []; saveDatabase(); renderLaporanPenjualan(); updateQueueCounters(); } }); }
 
-        // Kartu & Saldo
+        // [Perbaikan Performa] DOM Thrashing
         function renderKartu() { 
             if(userAktif.role !== 'Owner') return; 
-            let tbody = document.querySelector('#cards-table tbody'); tbody.innerHTML = ''; 
-            DB.kartuPelanggan.forEach((k, idx) => { tbody.innerHTML += `<tr><td><code>${k.id}</code></td><td><b>${k.nama}</b></td><td style="color:var(--success); font-weight:800;">Rp ${k.saldo.toLocaleString('id-ID')}</td><td><button class="btn-action" style="background:var(--danger); padding:4px 10px;" onclick="hapusKartu(${idx})"><i class="fas fa-trash"></i></button></td></tr>`; }); 
+            let tbody = document.querySelector('#cards-table tbody'); 
+            let htmlTemp = '';
+            DB.kartuPelanggan.forEach((k, idx) => { 
+                htmlTemp += `<tr><td><code>${k.id}</code></td><td><b>${k.nama}</b></td><td style="color:var(--success); font-weight:800;">Rp ${k.saldo.toLocaleString('id-ID')}</td><td><button class="btn-action" style="background:var(--danger); padding:4px 10px;" onclick="hapusKartu(${idx})"><i class="fas fa-trash"></i></button></td></tr>`; 
+            }); 
+            tbody.innerHTML = htmlTemp;
         }
         function hapusKartu(idx) { DB.kartuPelanggan.splice(idx,1); saveDatabase(); renderKartu(); }
         function cekSaldoKartu() { let id = document.getElementById('topup-card-id').value; let k = DB.kartuPelanggan.find(x => x.id === id); if(k) { document.getElementById('info-nama-pemilik').innerText = k.nama; document.getElementById('info-saldo-pemilik').innerText = 'Rp ' + k.saldo.toLocaleString('id-ID'); document.getElementById('topup-info-box').style.display = 'block'; } else { Swal.fire('Tidak Ditemukan', 'Kartu tidak terdaftar di sistem.', 'error'); } }
