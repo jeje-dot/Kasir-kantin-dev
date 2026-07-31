@@ -71,7 +71,7 @@
         .stat-val { font-size: 22px; font-weight: 800; margin-top: 3px; color: var(--text-main); }
         .stat-title { font-size: 11px; color: var(--text-muted); font-weight: 600; text-transform: uppercase; }
 
-        /* --- POS ENTERPRISE LAYOUT (FLEKSIBEL) --- */
+        /* --- POS ENTERPRISE LAYOUT --- */
         #sec-pos { padding: 12px; background: #e2e8f0; overflow: hidden; }
         .pos-layout { display: flex; gap: 12px; height: 100%; width: 100%; overflow: hidden; }
         .pos-products { flex: 1; display: flex; flex-direction: column; background: var(--card-bg); border-radius: 14px; padding: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.02); border: 1px solid var(--border); min-width: 0; height: 100%; overflow: hidden; }
@@ -109,7 +109,6 @@
         .qty-btn { width: 26px; height: 26px; border-radius: 6px; border: 1px solid var(--border); background: var(--light); font-weight: bold; cursor: pointer; transition: 0.2s; }
         .qty-btn:hover { background: var(--secondary); color: white; border-color: var(--secondary); }
 
-        /* Panel Status Pesanan Interaktif di Bagian Bawah */
         .queue-bottom-panel { background: white; border-top: 1px solid var(--border); padding: 10px 15px; display: flex; flex-direction: column; gap: 8px; flex-shrink: 0; border-radius: 0 0 12px 12px; }
         .queue-bottom-tabs { display: flex; gap: 10px; }
         .q-card { flex: 1; background: var(--light); border: 1px solid var(--border); border-radius: 8px; padding: 6px 10px; text-align: center; cursor: pointer; transition: 0.2s; }
@@ -144,6 +143,7 @@
         .row-void td { text-decoration: line-through; color: var(--danger); background: #fef2f2 !important; }
         .hide-file { display: none; }
         .badge-kios { background: #e0f2fe; color: #0369a1; padding: 3px 8px; border-radius: 6px; font-size: 11px; font-weight: 700; }
+        .badge-pin { font-family: monospace; background: #f1f5f9; padding: 4px 8px; border-radius: 4px; letter-spacing: 2px; border: 1px solid #cbd5e1; font-weight: bold; color: var(--danger); }
 
         /* --- PRINT AREA --- */
         @media screen { #receipt-print-area { display: none !important; } }
@@ -272,7 +272,6 @@
             <div id="sec-pos" class="dashboard-section">
                 <div class="pos-layout">
                     
-                    <!-- KIRI: AREA PRODUK & PANEL ANTRIAN BAWAH -->
                     <div class="pos-products">
                         <div style="display:flex; gap:10px; margin-bottom: 10px; flex-shrink: 0;">
                             <div class="search-bar">
@@ -282,7 +281,6 @@
                             <select id="pos-kios-selector" class="form-control" style="width: auto; font-weight: bold; cursor: pointer; border: 2px solid var(--accent); background: white;" onchange="gantiKiosPOS()"></select>
                         </div>
 
-                        <!-- Chip Kategori Horizontal -->
                         <div class="category-container" id="kategori-filter-container">
                             <div class="cat-chip active" id="chip-Semua" onclick="filterKategori('Semua')">🍽️ Semua Menu</div>
                             <div class="cat-chip" id="chip-Makanan" onclick="filterKategori('Makanan')">🍔 Makanan</div>
@@ -290,12 +288,10 @@
                             <div class="cat-chip" id="chip-Snack" onclick="filterKategori('Snack')">🍪 Snack</div>
                         </div>
 
-                        <!-- Tampilan Utama (Grid Produk atau List Filter Pesanan) -->
                         <div id="dynamic-product-or-queue-view" style="display: flex; flex-direction: column; flex: 1; min-height: 0; overflow: hidden;">
                             <div class="product-grid" id="product-grid"></div>
                         </div>
 
-                        <!-- Panel Status Pesanan (Proses & Selesai) di Bagian Bawah -->
                         <div class="queue-bottom-panel">
                             <div style="font-size: 10px; font-weight: 800; text-transform: uppercase; color: var(--text-muted);">Panel Status Pesanan Dapur</div>
                             <div class="queue-bottom-tabs">
@@ -315,7 +311,6 @@
                         </div>
                     </div>
 
-                    <!-- KANAN: PANEL KERANJANG (STATIC) -->
                     <div class="pos-cart">
                         <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
                             <h3 style="margin:0; color:var(--primary); font-size: 16px;"><i class="fas fa-shopping-cart" style="color: var(--accent);"></i> Keranjang</h3>
@@ -386,7 +381,6 @@
                         </div>
                     </div>
                 </div>
-                <!-- Tabel daftar kartu hanya muncul untuk Owner -->
                 <div id="owner-card-list-container" style="margin-top: 20px; background: var(--card-bg); padding: 18px; border-radius: 12px; border: 1px solid var(--border); display: none;">
                     <h4 style="margin-bottom: 12px; color: var(--text-muted); text-transform: uppercase; font-size: 11px; font-weight: 800;">Daftar Kartu Terdaftar (Owner Access)</h4>
                     <div style="overflow-x: auto;">
@@ -530,7 +524,8 @@
                 </div>
                 <div style="background: var(--card-bg); padding: 18px; border-radius: 12px; border: 1px solid var(--border); overflow-x: auto;">
                     <table id="karyawan-table">
-                        <thead><tr><th>Nama Pengguna</th><th>Role</th><th>Akses Kios</th><th>Aksi</th></tr></thead>
+                        <!-- Update Header untuk menampilkan kolom PIN Rahasia -->
+                        <thead><tr><th>Nama Pengguna</th><th>Role</th><th>Akses Kios</th><th>PIN Karyawan</th><th>Aksi</th></tr></thead>
                         <tbody></tbody>
                     </table>
                 </div>
@@ -541,7 +536,6 @@
                 <h2 style="color: var(--primary); margin-bottom: 15px;"><i class="fas fa-tools"></i> Pengaturan Printer & Sistem</h2>
                 <div style="display: flex; gap: 15px; flex-wrap: wrap;">
                     
-                    <!-- KOP STRUK (Hanya untuk Owner) -->
                     <div id="setting-kop-struk" style="flex: 1; background: var(--card-bg); padding: 20px; border-radius: 12px; border: 1px solid var(--border); min-width: 280px; display: none;">
                         <h4 style="margin-bottom: 15px; color: var(--primary); display: flex; align-items: center; gap: 8px; font-size: 14px;"><i class="fas fa-receipt"></i> Kop Struk Printer</h4>
                         <div class="form-group"><label>Nama Toko Utama:</label><input type="text" id="setting-struk-nama" class="form-control"></div>
@@ -550,7 +544,6 @@
                         <button class="btn-action" style="background: var(--success); width: 100%; justify-content: center; padding: 12px;" onclick="simpanPengaturanStruk()"><i class="fas fa-save"></i> Simpan Desain</button>
                     </div>
 
-                    <!-- PRINTER THERMAL (Bisa Diakses Semua) -->
                     <div style="flex: 1; background: var(--card-bg); padding: 20px; border-radius: 12px; border: 1px solid var(--border); min-width: 280px;">
                         <h4 style="margin-bottom: 15px; color: var(--primary); display: flex; align-items: center; gap: 8px; font-size: 14px;"><i class="fas fa-print"></i> Pengaturan Printer Thermal</h4>
                         <div class="form-group">
@@ -587,7 +580,6 @@
         let btDevice = null; 
         let btCharacteristic = null;
 
-        // [Perbaikan Keamanan] Menggunakan CryptoJS SHA256 daripada custom bitwise yang rentan
         function hashPIN(pin) {
             return CryptoJS.SHA256(pin).toString();
         }
@@ -595,11 +587,7 @@
         let DB = { kiosList: [], produkList: [], riwayatPenjualan: [], karyawanList: [], settingStruk: {}, kartuPelanggan: [], settingPrinter: 'browser', printerName: '' };
 
         function initDatabase() {
-            let cekKaryawan = localStorage.getItem('karyawan');
-            if (cekKaryawan && cekKaryawan.includes('Promise')) localStorage.removeItem('karyawan');
-
             DB.kiosList = JSON.parse(localStorage.getItem('kios_list')) || ["Kios Aneka Bakso", "Kios Minuman Segar"];
-            
             DB.produkList = JSON.parse(localStorage.getItem('produk_multikios')) || [
                 { id: "BKS01", nama: "Bakso Urat Spesial", harga: 20000, stok: 40, kios: "Kios Aneka Bakso", kategori: "Makanan", gambar: "" },
                 { id: "BKS02", nama: "Bakso Telur Asin", harga: 18000, stok: 35, kios: "Kios Aneka Bakso", kategori: "Makanan", gambar: "" },
@@ -607,18 +595,19 @@
                 { id: "MIN02", nama: "Es Kopi Susu Aren", harga: 15000, stok: 5, kios: "Kios Minuman Segar", kategori: "Minuman", gambar: "" },
                 { id: "SNK01", nama: "Kerupuk Kulit", harga: 4000, stok: 20, kios: "Kios Aneka Bakso", kategori: "Snack", gambar: "" }
             ];
-            
             DB.riwayatPenjualan = JSON.parse(localStorage.getItem('riwayat_multikios')) || [];
             DB.kartuPelanggan = JSON.parse(localStorage.getItem('kartu_pelanggan')) || [];
             DB.settingStruk = JSON.parse(localStorage.getItem('setting_struk')) || { namaToko: "PUJASERA SEJAHTERA", alamat: "Jl. Raya Kuliner No. 123", footer: "Terima Kasih Atas Kunjungan Anda!" };
             DB.settingPrinter = localStorage.getItem('setting_printer') || 'browser';
             DB.printerName = localStorage.getItem('printer_name') || "";
 
-            DB.karyawanList = JSON.parse(localStorage.getItem('karyawan'));
+            // MENGGUNAKAN KEY BARU "karyawan_v2" UNTUK ME-RESET DATA LOGIN LAMA YANG ERROR
+            DB.karyawanList = JSON.parse(localStorage.getItem('karyawan_v2'));
             if(!DB.karyawanList || DB.karyawanList.length === 0) {
                 DB.karyawanList = [
-                    { nama: "Admin Pusat", pinHash: hashPIN("123456"), role: "Owner", kios: "SEMUA KIOS" },
-                    { nama: "Kasir Bakso", pinHash: hashPIN("111111"), role: "Tenant", kios: "Kios Aneka Bakso" }
+                    // Menyimpan pinAsli agar owner bisa membacanya di menu karyawan
+                    { nama: "Admin Pusat", pinHash: hashPIN("123456"), pinAsli: "123456", role: "Owner", kios: "SEMUA KIOS" },
+                    { nama: "Kasir Bakso", pinHash: hashPIN("111111"), pinAsli: "111111", role: "Tenant", kios: "Kios Aneka Bakso" }
                 ];
             }
             saveDatabase();
@@ -628,7 +617,7 @@
             localStorage.setItem('kios_list', JSON.stringify(DB.kiosList));
             localStorage.setItem('produk_multikios', JSON.stringify(DB.produkList));
             localStorage.setItem('riwayat_multikios', JSON.stringify(DB.riwayatPenjualan));
-            localStorage.setItem('karyawan', JSON.stringify(DB.karyawanList));
+            localStorage.setItem('karyawan_v2', JSON.stringify(DB.karyawanList)); // Simpan ke key baru
             localStorage.setItem('setting_struk', JSON.stringify(DB.settingStruk));
             localStorage.setItem('kartu_pelanggan', JSON.stringify(DB.kartuPelanggan));
             localStorage.setItem('setting_printer', DB.settingPrinter);
@@ -636,16 +625,11 @@
         }
 
         let userAktif = null; let kiosAktifPOS = ""; let keranjang = []; 
-        let kategoriAktif = 'Semua'; 
-        let currentQueueFilter = 'ALL'; 
-        
-        // --- Variabel Lockout / Login Terkunci (Acuan: indexmart) ---
-        let isLocked = false;
-        let salahLogCount = 0;
+        let kategoriAktif = 'Semua'; let currentQueueFilter = 'ALL'; 
+        let isLocked = false; let salahLogCount = 0;
 
         window.onload = () => { initDatabase(); };
 
-        // [Perbaikan Sistem Login] Acuan popup langsung & sistem lockout 
         function actionLogin() {
             if (isLocked) return false;
 
@@ -656,60 +640,29 @@
             let inputHash = hashPIN(pinInput);
             let user = DB.karyawanList.find(u => u.pinHash === inputHash);
 
-            pinInputEl.value = ''; // Langsung kosongkan
+            pinInputEl.value = ''; 
 
             if(user) {
-                salahLogCount = 0;
-                userAktif = user; 
+                salahLogCount = 0; userAktif = user; 
                 kiosAktifPOS = user.role === 'Owner' ? DB.kiosList[0] : user.kios;
                 lanjutkanLogin();
             } else {
                 salahLogCount++;
-                if(salahLogCount >= 3) {
-                    triggerLockout();
-                } else {
-                    // Hilangkan setTimeout, panggil SweetAlert secara langsung
-                    Swal.fire({
-                        icon: 'error',
-                        title: 'PIN Salah',
-                        text: `PIN tidak terdaftar. Sisa percobaan: ${3 - salahLogCount}`,
-                        confirmButtonColor: '#ef4444'
-                    }).then(() => {
-                        pinInputEl.focus();
-                    });
-                }
+                if(salahLogCount >= 3) { triggerLockout(); } 
+                else { Swal.fire({ icon: 'error', title: 'PIN Salah', text: `PIN tidak terdaftar. Sisa percobaan: ${3 - salahLogCount}`, confirmButtonColor: '#ef4444' }).then(() => { pinInputEl.focus(); }); }
             }
             return false; 
         }
 
         function triggerLockout() {
-            isLocked = true;
-            let cooldown = 30;
-            let pinInputEl = document.getElementById('input-pin');
-            let btnLogin = document.getElementById('btn-login');
-            
-            pinInputEl.disabled = true;
-            btnLogin.disabled = true;
-            
-            Swal.fire({
-                icon: 'warning',
-                title: 'Akses Terkunci',
-                text: 'Terlalu banyak percobaan salah. Silakan tunggu 30 detik.',
-                showConfirmButton: false,
-                timer: 3000
-            });
-
+            isLocked = true; let cooldown = 30; let pinInputEl = document.getElementById('input-pin'); let btnLogin = document.getElementById('btn-login');
+            pinInputEl.disabled = true; btnLogin.disabled = true;
+            Swal.fire({ icon: 'warning', title: 'Akses Terkunci', text: 'Terlalu banyak percobaan salah. Silakan tunggu 30 detik.', showConfirmButton: false, timer: 3000 });
             let timer = setInterval(() => {
-                btnLogin.innerText = `TERKUNCI (${cooldown}s)`;
-                cooldown--;
+                btnLogin.innerText = `TERKUNCI (${cooldown}s)`; cooldown--;
                 if (cooldown < 0) {
-                    clearInterval(timer);
-                    isLocked = false;
-                    salahLogCount = 0;
-                    pinInputEl.disabled = false;
-                    btnLogin.disabled = false;
-                    btnLogin.innerHTML = `LOGIN <i class="fas fa-arrow-right" style="margin-left: 8px;"></i>`;
-                    pinInputEl.focus();
+                    clearInterval(timer); isLocked = false; salahLogCount = 0; pinInputEl.disabled = false; btnLogin.disabled = false;
+                    btnLogin.innerHTML = `LOGIN <i class="fas fa-arrow-right" style="margin-left: 8px;"></i>`; pinInputEl.focus();
                 }
             }, 1000);
         }
@@ -718,7 +671,6 @@
             document.getElementById('login-screen').style.display = 'none';
             document.getElementById('main-header').style.display = 'flex';
             document.getElementById('main-body').style.display = 'flex';
-
             document.getElementById('active-user-badge').innerText = `${userAktif.nama} (${userAktif.role})`;
             document.getElementById('header-app-name').innerText = DB.settingStruk.namaToko;
             document.getElementById('dash-user').innerText = userAktif.nama;
@@ -737,117 +689,59 @@
                 document.getElementById('btn-reset-riwayat').style.display = 'none'; 
                 document.getElementById('setting-kop-struk').style.display = 'none'; 
             }
-
-            buildDropdowns(); 
-            muatDataPengaturanUI(); 
-            gantiKiosPOS(); 
-            
-            switchMenu('dashboard');
+            buildDropdowns(); muatDataPengaturanUI(); gantiKiosPOS(); switchMenu('dashboard');
             if(DB.settingPrinter === 'bluetooth') autoConnectPrinter();
         }
 
         function logout() { location.reload(); }
         function toggleSidebar() { document.getElementById('sidebar-menu').classList.toggle('collapsed'); }
 
-        // [Perbaikan Akses Stock Opname] Kondisi khusus Owner vs Tenant di Stock Opname Dropdown
         function buildDropdowns() {
             let optKios = DB.kiosList.map(k => `<option value="${k}">${k}</option>`).join('');
-            let domPos = document.getElementById('pos-kios-selector');
-            let domLaporan = document.getElementById('sales-kios-filter');
-            let domOpname = document.getElementById('opname-kios-filter');
-            
+            let domPos = document.getElementById('pos-kios-selector'); let domLaporan = document.getElementById('sales-kios-filter'); let domOpname = document.getElementById('opname-kios-filter');
             if(userAktif.role === 'Owner') { 
                 domPos.innerHTML = optKios; domPos.disabled = false; 
                 domLaporan.innerHTML = `<option value="ALL">-- SEMUA KIOS --</option>` + optKios; domLaporan.disabled = false;
-                
-                // Opname Akses Owner
                 domOpname.innerHTML = optKios; domOpname.disabled = false;
             } else { 
                 domPos.innerHTML = `<option value="${userAktif.kios}">${userAktif.kios}</option>`; domPos.disabled = true; 
                 domLaporan.innerHTML = `<option value="${userAktif.kios}">${userAktif.kios}</option>`; domLaporan.disabled = true; 
-                
-                // Opname Akses Terkunci (Hanya Kios Tenant)
                 domOpname.innerHTML = `<option value="${userAktif.kios}">${userAktif.kios}</option>`; domOpname.disabled = true;
             }
-
             document.getElementById('new-kios').innerHTML = optKios;
             document.getElementById('k-role-kios').innerHTML = optKios;
         }
 
         function switchMenu(menuId, el = null) {
-            if(userAktif.role !== 'Owner' && (menuId === 'stok' || menuId === 'tenant' || menuId === 'karyawan')) {
-                Swal.fire('Akses Dibatasi', 'Anda tidak memiliki izin mengakses menu ini.', 'warning');
-                return;
-            }
-
+            if(userAktif.role !== 'Owner' && (menuId === 'stok' || menuId === 'tenant' || menuId === 'karyawan')) { Swal.fire('Akses Dibatasi', 'Anda tidak memiliki izin mengakses menu ini.', 'warning'); return; }
             document.querySelectorAll('.menu-item').forEach(m => m.classList.remove('active'));
             if(el) el.classList.add('active');
-            else {
-                let targetEl = Array.from(document.querySelectorAll('.menu-item')).find(m => m.getAttribute('onclick') && m.getAttribute('onclick').includes(menuId));
-                if(targetEl) targetEl.classList.add('active');
-            }
-
-            document.querySelectorAll('.dashboard-section').forEach(s => s.classList.remove('active'));
-            document.getElementById('sec-' + menuId).classList.add('active');
-
-            if(menuId === 'pos') {
-                updateQueueCounters();
-            } else {
-                if(menuId === 'dashboard') updateDashboard();
-                if(menuId === 'stok') renderStok();
-                if(menuId === 'pembayaran') renderKartu();
-                if(menuId === 'laporan') renderLaporanPenjualan();
-                if(menuId === 'tenant') renderKiosManagerList();
-                if(menuId === 'karyawan') renderKaryawan();
-                if(menuId === 'opname') renderOpname();
-            }
+            else { let targetEl = Array.from(document.querySelectorAll('.menu-item')).find(m => m.getAttribute('onclick') && m.getAttribute('onclick').includes(menuId)); if(targetEl) targetEl.classList.add('active'); }
+            document.querySelectorAll('.dashboard-section').forEach(s => s.classList.remove('active')); document.getElementById('sec-' + menuId).classList.add('active');
+            if(menuId === 'pos') { updateQueueCounters(); } 
+            else { if(menuId === 'dashboard') updateDashboard(); if(menuId === 'stok') renderStok(); if(menuId === 'pembayaran') renderKartu(); if(menuId === 'laporan') renderLaporanPenjualan(); if(menuId === 'tenant') renderKiosManagerList(); if(menuId === 'karyawan') renderKaryawan(); if(menuId === 'opname') renderOpname(); }
         }
 
         function updateDashboard() {
-            let today = new Date().toLocaleDateString('id-ID');
-            let todayOmzet = 0; let todayTrx = 0; let itemCounter = {};
-
+            let today = new Date().toLocaleDateString('id-ID'); let todayOmzet = 0; let todayTrx = 0; let itemCounter = {};
             DB.riwayatPenjualan.forEach(r => {
-                if(r.waktu.includes(today)) { 
-                    if(!r.isVoid) { 
-                        let validForUser = userAktif.role === 'Owner' || r.items.some(i => i.kios === userAktif.kios);
-                        if(validForUser) {
-                            todayOmzet += r.totalNota; todayTrx++; 
-                            r.items.forEach(i => { 
-                                if(userAktif.role === 'Owner' || i.kios === userAktif.kios) {
-                                    if(!itemCounter[i.nama]) itemCounter[i.nama] = 0; 
-                                    itemCounter[i.nama] += i.qty; 
-                                }
-                            });
-                        }
+                if(r.waktu.includes(today) && !r.isVoid) { 
+                    let validForUser = userAktif.role === 'Owner' || r.items.some(i => i.kios === userAktif.kios);
+                    if(validForUser) {
+                        todayOmzet += r.totalNota; todayTrx++; 
+                        r.items.forEach(i => { if(userAktif.role === 'Owner' || i.kios === userAktif.kios) { if(!itemCounter[i.nama]) itemCounter[i.nama] = 0; itemCounter[i.nama] += i.qty; } });
                     }
                 }
             });
-
-            document.getElementById('dash-omzet').innerText = `Rp ${todayOmzet.toLocaleString('id-ID')}`;
-            document.getElementById('dash-trx').innerText = todayTrx;
-
+            document.getElementById('dash-omzet').innerText = `Rp ${todayOmzet.toLocaleString('id-ID')}`; document.getElementById('dash-trx').innerText = todayTrx;
             let sortedItems = Object.keys(itemCounter).sort((a,b) => itemCounter[b] - itemCounter[a]).slice(0, 5);
-            let tbody = document.querySelector('#dash-top-items tbody'); 
-            let htmlTemp = '';
-            
+            let tbody = document.querySelector('#dash-top-items tbody'); let htmlTemp = '';
             if(sortedItems.length === 0) htmlTemp = '<tr><td colspan="2" style="text-align:center; color:gray;">Belum ada penjualan hari ini</td></tr>';
-            sortedItems.forEach(nama => { htmlTemp += `<tr><td><i class="fas fa-fire" style="color:var(--danger); margin-right:5px;"></i> ${nama}</td><td><b>${itemCounter[nama]}</b> porsi</td></tr>`; });
-            tbody.innerHTML = htmlTemp;
+            sortedItems.forEach(nama => { htmlTemp += `<tr><td><i class="fas fa-fire" style="color:var(--danger); margin-right:5px;"></i> ${nama}</td><td><b>${itemCounter[nama]}</b> porsi</td></tr>`; }); tbody.innerHTML = htmlTemp;
         }
 
-        function downloadCSV(dataArray, filename) {
-            let csvContent = "data:text/csv;charset=utf-8,";
-            dataArray.forEach(row => { csvContent += row.join(",") + "\r\n"; });
-            let link = document.createElement("a"); link.setAttribute("href", encodeURI(csvContent)); link.setAttribute("download", filename);
-            document.body.appendChild(link); link.click(); document.body.removeChild(link);
-        }
-
-        function downloadTemplateCSV(type) {
-            if(type === 'stok') downloadCSV([["ID_Menu", "Nama_Menu", "Nama_Kios", "Harga_Jual", "Stok_Awal", "Kategori", "URL_Gambar"], ["MIE01", "Mie Ayam Spesial", "Kios Aneka Bakso", "20000", "50", "Makanan", "https://example.com/gambar.jpg"]], "Template_Stok_Menu.csv");
-            if(type === 'kios') downloadCSV([["Nama_Kios"], ["Kios Ayam Geprek"]], "Template_Data_Kios.csv");
-            if(type === 'karyawan') downloadCSV([["Nama_Karyawan", "PIN_Angka", "Nama_Kios_Akses"], ["Budi Santoso", "123123", "Kios Ayam Geprek"]], "Template_Karyawan.csv");
-        }
+        function downloadCSV(dataArray, filename) { let csvContent = "data:text/csv;charset=utf-8,"; dataArray.forEach(row => { csvContent += row.join(",") + "\r\n"; }); let link = document.createElement("a"); link.setAttribute("href", encodeURI(csvContent)); link.setAttribute("download", filename); document.body.appendChild(link); link.click(); document.body.removeChild(link); }
+        function downloadTemplateCSV(type) { if(type === 'stok') downloadCSV([["ID_Menu", "Nama_Menu", "Nama_Kios", "Harga_Jual", "Stok_Awal", "Kategori", "URL_Gambar"], ["MIE01", "Mie Ayam Spesial", "Kios Aneka Bakso", "20000", "50", "Makanan", "https://example.com/gambar.jpg"]], "Template_Stok_Menu.csv"); if(type === 'kios') downloadCSV([["Nama_Kios"], ["Kios Ayam Geprek"]], "Template_Data_Kios.csv"); if(type === 'karyawan') downloadCSV([["Nama_Karyawan", "PIN_Angka", "Nama_Kios_Akses"], ["Budi Santoso", "123123", "Kios Ayam Geprek"]], "Template_Karyawan.csv"); }
 
         function importCSV(event, type) {
             let file = event.target.files[0]; if(!file) return;
@@ -855,129 +749,65 @@
             reader.onload = (e) => {
                 let lines = e.target.result.split('\n'); let count = 0;
                 for(let i=1; i<lines.length; i++){
-                    if(!lines[i].trim()) continue;
-                    let cols = lines[i].split(',').map(c => c.trim().replace(/"/g, ''));
-                    if(type === 'stok' && cols.length >= 5) {
-                        let [id, nama, kios, harga, stok, kategori, gambar] = cols;
-                        if(id && DB.kiosList.includes(kios) && !DB.produkList.find(p=>p.id===id)) {
-                            DB.produkList.push({id, nama, kios, harga:parseInt(harga)||0, stok:parseInt(stok)||0, kategori: kategori || "Makanan", gambar: gambar || ""}); count++;
-                        }
-                    }
+                    if(!lines[i].trim()) continue; let cols = lines[i].split(',').map(c => c.trim().replace(/"/g, ''));
+                    if(type === 'stok' && cols.length >= 5) { let [id, nama, kios, harga, stok, kategori, gambar] = cols; if(id && DB.kiosList.includes(kios) && !DB.produkList.find(p=>p.id===id)) { DB.produkList.push({id, nama, kios, harga:parseInt(harga)||0, stok:parseInt(stok)||0, kategori: kategori || "Makanan", gambar: gambar || ""}); count++; } }
                     if(type === 'kios' && cols.length >= 1) { let n = cols[0]; if(n && !DB.kiosList.includes(n)) { DB.kiosList.push(n); count++; } }
-                    if(type === 'karyawan' && cols.length >= 3) { let [nama, pin, kios] = cols; if(nama && pin && DB.kiosList.includes(kios)) { DB.karyawanList.push({nama, pinHash:hashPIN(pin), role:'Tenant', kios}); count++; } }
+                    if(type === 'karyawan' && cols.length >= 3) { let [nama, pin, kios] = cols; if(nama && pin && DB.kiosList.includes(kios)) { DB.karyawanList.push({nama, pinHash:hashPIN(pin), pinAsli: pin, role:'Tenant', kios}); count++; } }
                 }
                 saveDatabase(); event.target.value = '';
                 if(type === 'stok') renderStok(); if(type === 'kios') { buildDropdowns(); renderKiosManagerList(); } if(type === 'karyawan') renderKaryawan();
                 Swal.fire('Import Sukses', `Berhasil memproses ${count} data baru.`, 'success');
-            };
-            reader.readAsText(file);
+            }; reader.readAsText(file);
         }
 
-        // --- SISTEM POS & ANTRIAN BAWAH ---
         function filterKategori(kat) {
-            kategoriAktif = kat;
-            document.querySelectorAll('.cat-chip').forEach(btn => btn.classList.remove('active'));
-            let el = document.getElementById('chip-' + kat);
-            if(el) el.classList.add('active');
-            
-            currentQueueFilter = 'ALL';
-            highlightQueueFilterCard('ALL');
-            filterProduk(document.getElementById('input-barcode').value);
+            kategoriAktif = kat; document.querySelectorAll('.cat-chip').forEach(btn => btn.classList.remove('active'));
+            let el = document.getElementById('chip-' + kat); if(el) el.classList.add('active');
+            currentQueueFilter = 'ALL'; highlightQueueFilterCard('ALL'); filterProduk(document.getElementById('input-barcode').value);
         }
 
-        function gantiKiosPOS() {
-            kiosAktifPOS = document.getElementById('pos-kios-selector').value;
-            keranjang = []; renderKeranjang(); filterProduk(''); updateQueueCounters();
-        }
-
-        function setQueueFilter(status) {
-            currentQueueFilter = status;
-            highlightQueueFilterCard(status);
-            renderQueueOrProductsContainer();
-        }
-
-        function highlightQueueFilterCard(status) {
-            ['ALL', 'Proses', 'Selesai'].forEach(s => {
-                let card = document.getElementById('qfilter-' + s.toLowerCase());
-                if(card) card.classList.remove('active-filter');
-            });
-            let activeCard = document.getElementById('qfilter-' + status.toLowerCase());
-            if(activeCard) activeCard.classList.add('active-filter');
-        }
+        function gantiKiosPOS() { kiosAktifPOS = document.getElementById('pos-kios-selector').value; keranjang = []; renderKeranjang(); filterProduk(''); updateQueueCounters(); }
+        function setQueueFilter(status) { currentQueueFilter = status; highlightQueueFilterCard(status); renderQueueOrProductsContainer(); }
+        function highlightQueueFilterCard(status) { ['ALL', 'Proses', 'Selesai'].forEach(s => { let card = document.getElementById('qfilter-' + s.toLowerCase()); if(card) card.classList.remove('active-filter'); }); let activeCard = document.getElementById('qfilter-' + status.toLowerCase()); if(activeCard) activeCard.classList.add('active-filter'); }
 
         function updateQueueCounters() {
             let activeList = DB.riwayatPenjualan.filter(r => !r.isVoid && (userAktif.role === 'Owner' || r.items.some(i => i.kios === kiosAktifPOS)));
-            let cProses = activeList.filter(r => r.statusAntrian === 'Proses').length;
-            let cSelesai = activeList.filter(r => r.statusAntrian === 'Selesai').length;
-            
-            document.getElementById('q-total').innerText = activeList.length;
-            document.getElementById('q-proses').innerText = cProses;
-            document.getElementById('q-selesai').innerText = cSelesai;
-
+            let cProses = activeList.filter(r => r.statusAntrian === 'Proses').length; let cSelesai = activeList.filter(r => r.statusAntrian === 'Selesai').length;
+            document.getElementById('q-total').innerText = activeList.length; document.getElementById('q-proses').innerText = cProses; document.getElementById('q-selesai').innerText = cSelesai;
             if(currentQueueFilter !== 'ALL') renderQueueOrProductsContainer();
         }
 
         function renderQueueOrProductsContainer() {
             let container = document.getElementById('dynamic-product-or-queue-view');
-            
-            if(currentQueueFilter === 'ALL') {
-                container.innerHTML = `<div class="product-grid" id="product-grid"></div>`;
-                filterProduk(document.getElementById('input-barcode').value);
-            } else {
+            if(currentQueueFilter === 'ALL') { container.innerHTML = `<div class="product-grid" id="product-grid"></div>`; filterProduk(document.getElementById('input-barcode').value); } 
+            else {
                 let list = DB.riwayatPenjualan.filter(r => !r.isVoid && r.statusAntrian === currentQueueFilter && (userAktif.role === 'Owner' || r.items.some(i => i.kios === kiosAktifPOS)));
-                
                 let html = `<div style="flex:1; overflow-y:auto; display:flex; flex-direction:column; gap:10px; padding-bottom:15px;">`;
-                if(list.length === 0) {
-                    html += `<div style="text-align:center; color:var(--text-muted); margin-top:40px;"><i class="fas fa-clipboard-check" style="font-size:36px; margin-bottom:10px;"></i><br>Tidak ada pesanan dengan status "${currentQueueFilter}"</div>`;
-                } else {
+                if(list.length === 0) { html += `<div style="text-align:center; color:var(--text-muted); margin-top:40px;"><i class="fas fa-clipboard-check" style="font-size:36px; margin-bottom:10px;"></i><br>Tidak ada pesanan dengan status "${currentQueueFilter}"</div>`; } 
+                else {
                     list.forEach(trx => {
                         let itemListStr = trx.items.map(i => `${i.nama} (x${i.qty})`).join(', ');
-                        let actionBtn = '';
-                        if(trx.statusAntrian === 'Proses') {
-                            actionBtn = `<button class="btn-action" style="background:var(--success);" onclick="ubahStatusAntrian('${trx.idNota}', 'Selesai')"><i class="fas fa-check"></i> Selesai</button>`;
-                        } else {
-                            actionBtn = `<span style="color:var(--success); font-weight:bold; font-size:12px;"><i class="fas fa-check-circle"></i> Selesai Diserahkan</span>`;
-                        }
-
+                        let actionBtn = trx.statusAntrian === 'Proses' ? `<button class="btn-action" style="background:var(--success);" onclick="ubahStatusAntrian('${trx.idNota}', 'Selesai')"><i class="fas fa-check"></i> Selesai</button>` : `<span style="color:var(--success); font-weight:bold; font-size:12px;"><i class="fas fa-check-circle"></i> Selesai Diserahkan</span>`;
                         html += `
                             <div style="background:white; border:1px solid var(--border); border-radius:10px; padding:12px; display:flex; justify-content:space-between; align-items:center; gap:10px;">
-                                <div>
-                                    <div style="font-weight:900; font-size:13px; color:var(--primary);">${trx.idNota} - Meja: ${trx.meja} <span style="font-weight:normal; color:var(--text-muted);">(${trx.tipePesanan})</span></div>
-                                    <div style="font-size:12px; color:var(--text-main); margin:3px 0;">${itemListStr}</div>
-                                    <div style="font-size:10px; color:var(--text-muted);">Waktu Pesan: ${trx.waktu}</div>
-                                </div>
-                                <div style="display:flex; flex-direction:column; align-items:flex-end; gap:5px;">
-                                    <b style="color:var(--danger); font-size:13px;">Rp ${trx.totalNota.toLocaleString('id-ID')}</b>
-                                    ${actionBtn}
-                                </div>
+                                <div><div style="font-weight:900; font-size:13px; color:var(--primary);">${trx.idNota} - Meja: ${trx.meja} <span style="font-weight:normal; color:var(--text-muted);">(${trx.tipePesanan})</span></div>
+                                <div style="font-size:12px; color:var(--text-main); margin:3px 0;">${itemListStr}</div><div style="font-size:10px; color:var(--text-muted);">Waktu Pesan: ${trx.waktu}</div></div>
+                                <div style="display:flex; flex-direction:column; align-items:flex-end; gap:5px;"><b style="color:var(--danger); font-size:13px;">Rp ${trx.totalNota.toLocaleString('id-ID')}</b>${actionBtn}</div>
                             </div>`;
                     });
                 }
-                html += `</div>`;
-                container.innerHTML = html;
+                html += `</div>`; container.innerHTML = html;
             }
         }
 
-        function ubahStatusAntrian(idNota, statusTarget) {
-            let trx = DB.riwayatPenjualan.find(r => r.idNota === idNota);
-            if(trx) {
-                trx.statusAntrian = statusTarget;
-                if(statusTarget === 'Selesai') trx.waktuSelesaiMs = Date.now();
-                saveDatabase();
-                updateQueueCounters();
-            }
-        }
+        function ubahStatusAntrian(idNota, statusTarget) { let trx = DB.riwayatPenjualan.find(r => r.idNota === idNota); if(trx) { trx.statusAntrian = statusTarget; if(statusTarget === 'Selesai') trx.waktuSelesaiMs = Date.now(); saveDatabase(); updateQueueCounters(); } }
 
-        // [Perbaikan Performa] Menghindari manipulasi DOM berulang pada innerHTML (DOM Thrashing)
         function filterProduk(keyword = '') {
             if(currentQueueFilter !== 'ALL') return;
-            const grid = document.getElementById('product-grid'); 
-            if(!grid) return;
-            
+            const grid = document.getElementById('product-grid'); if(!grid) return;
             let filtered = DB.produkList.filter(p => p.kios === kiosAktifPOS && p.stok > 0);
             if (kategoriAktif !== 'Semua') filtered = filtered.filter(p => p.kategori === kategoriAktif);
             if(keyword) filtered = filtered.filter(p => p.nama.toLowerCase().includes(keyword.toLowerCase()) || p.id.toLowerCase().includes(keyword.toLowerCase()));
-            
             let htmlTemp = '';
             filtered.forEach(p => {
                 let imgContent = p.gambar ? `<img src="${p.gambar}" alt="${p.nama}">` : `<i class="fas fa-hamburger"></i>`;
@@ -990,8 +820,7 @@
                             <div style="font-size: 10px; color: var(--text-muted); font-weight: bold; background: var(--light); padding: 2px 4px; border-radius: 4px;">Sisa: ${p.stok}</div>
                         </div>
                     </div>`;
-            });
-            grid.innerHTML = htmlTemp;
+            }); grid.innerHTML = htmlTemp;
         }
 
         function handleBarcode(e) { if (e.key === 'Enter') { let id = document.getElementById('input-barcode').value.trim(); if(id) tambahKeKeranjang(id); document.getElementById('input-barcode').value = ''; } }
@@ -1006,22 +835,13 @@
             renderKeranjang();
         }
 
-        function ubahQty(id, delta) {
-            let item = keranjang.find(k => k.id === id); let p = DB.produkList.find(x => x.id === id && x.kios === kiosAktifPOS);
-            if(item && p) {
-                let newQty = item.qty + delta;
-                if(newQty > p.stok) { if(typeof Swal !== 'undefined') Swal.fire('Limit', 'Melebihi stok.', 'warning'); item.qty = p.stok; }
-                else if(newQty <= 0) keranjang = keranjang.filter(k => k.id !== id);
-                else item.qty = newQty; renderKeranjang();
-            }
-        }
+        function ubahQty(id, delta) { let item = keranjang.find(k => k.id === id); let p = DB.produkList.find(x => x.id === id && x.kios === kiosAktifPOS); if(item && p) { let newQty = item.qty + delta; if(newQty > p.stok) { if(typeof Swal !== 'undefined') Swal.fire('Limit', 'Melebihi stok.', 'warning'); item.qty = p.stok; } else if(newQty <= 0) keranjang = keranjang.filter(k => k.id !== id); else item.qty = newQty; renderKeranjang(); } }
         function updateCatatan(id, val) { let item = keranjang.find(k => k.id === id); if(item) item.catatan = val; }
 
         function renderKeranjang() {
             let container = document.getElementById('cart-items-container'); let htmlTemp = ''; let total = 0; let count = 0;
-            if(keranjang.length === 0) {
-                htmlTemp = `<div style="text-align: center; color: var(--border); margin-top: 30px;"><i class="fas fa-shopping-basket" style="font-size: 40px; margin-bottom: 10px;"></i><br><span style="color:var(--text-muted); font-size:12px;">Keranjang Kosong</span></div>`;
-            } else {
+            if(keranjang.length === 0) { htmlTemp = `<div style="text-align: center; color: var(--border); margin-top: 30px;"><i class="fas fa-shopping-basket" style="font-size: 40px; margin-bottom: 10px;"></i><br><span style="color:var(--text-muted); font-size:12px;">Keranjang Kosong</span></div>`; } 
+            else {
                 keranjang.forEach(item => {
                     let sub = item.harga * item.qty; total += sub; count += item.qty;
                     htmlTemp += `
@@ -1040,9 +860,7 @@
                         </div>`;
                 });
             }
-            container.innerHTML = htmlTemp;
-            document.getElementById('grand-total').innerText = `Rp ${total.toLocaleString('id-ID')}`;
-            document.getElementById('cart-count').innerText = `${count}`;
+            container.innerHTML = htmlTemp; document.getElementById('grand-total').innerText = `Rp ${total.toLocaleString('id-ID')}`; document.getElementById('cart-count').innerText = `${count}`;
         }
 
         function tambahUang(nom) { let inp = document.getElementById('input-bayar'); inp.value = parseInt(inp.value || 0) + nom; }
@@ -1050,117 +868,57 @@
 
         function prosesCheckout(total, bayar, metode) {
             keranjang.forEach(item => { let idx = DB.produkList.findIndex(p => p.id === item.id && p.kios === item.kios); if(idx !== -1) DB.produkList[idx].stok -= item.qty; });
-            
-            let trx = { 
-                idNota: "PJ-" + Date.now().toString().slice(-6), 
-                waktuMulaiMs: Date.now(),
-                waktuSelesaiMs: null,
-                waktu: new Date().toLocaleString('id-ID'), 
-                totalNota: total, 
-                bayar: bayar, 
-                metode: metode, 
-                kasir: userAktif.nama, 
-                tipePesanan: document.getElementById('tipe-pesanan').value, 
-                meja: document.getElementById('nomor-meja').value || "-", 
-                statusAntrian: "Proses", 
-                isVoid: false, 
-                items: [...keranjang] 
-            };
-            DB.riwayatPenjualan.unshift(trx); saveDatabase();
-            
-            updateQueueCounters();
-            
-            if(DB.settingPrinter === 'browser') { cetakNotaHTML(trx); } 
-            else if(DB.settingPrinter === 'bluetooth') { generateTeksStrukBluetooth(trx); }
-            
+            let trx = { idNota: "PJ-" + Date.now().toString().slice(-6), waktuMulaiMs: Date.now(), waktuSelesaiMs: null, waktu: new Date().toLocaleString('id-ID'), totalNota: total, bayar: bayar, metode: metode, kasir: userAktif.nama, tipePesanan: document.getElementById('tipe-pesanan').value, meja: document.getElementById('nomor-meja').value || "-", statusAntrian: "Proses", isVoid: false, items: [...keranjang] };
+            DB.riwayatPenjualan.unshift(trx); saveDatabase(); updateQueueCounters();
+            if(DB.settingPrinter === 'browser') { cetakNotaHTML(trx); } else if(DB.settingPrinter === 'bluetooth') { generateTeksStrukBluetooth(trx); }
             keranjang = []; document.getElementById('input-bayar').value = ''; document.getElementById('nomor-meja').value = ''; renderKeranjang(); filterProduk(); 
         }
 
         function prosesPembayaranTunai() {
-            if(keranjang.length === 0) return;
-            let total = keranjang.reduce((sum, item) => sum + (item.harga * item.qty), 0);
-            let bayar = parseInt(document.getElementById('input-bayar').value || 0);
+            if(keranjang.length === 0) return; let total = keranjang.reduce((sum, item) => sum + (item.harga * item.qty), 0); let bayar = parseInt(document.getElementById('input-bayar').value || 0);
             if(bayar < total) { if(typeof Swal !== 'undefined') Swal.fire('Kurang', 'Uang tunai tidak mencukupi!', 'error'); return; }
             let kembali = bayar - total; prosesCheckout(total, bayar, 'Tunai');
             if(typeof Swal !== 'undefined') Swal.fire({ icon: 'success', title: 'Transaksi Sukses!', html: `Kembalian: <br><span style="font-size:24px; font-weight:900; color:var(--success);">Rp ${kembali.toLocaleString('id-ID')}</span>` });
         }
 
-        // [Penambahan Fitur QRIS] Integrasi Tombol & Logika QRIS
         function bayarPakaiQRIS() {
             if(keranjang.length === 0) return Swal.fire('Error', 'Keranjang masih kosong!', 'error');
-            
             let total = keranjang.reduce((sum, item) => sum + (item.harga * item.qty), 0);
-            
             Swal.fire({
                 title: 'Pembayaran QRIS',
                 html: `
                     <p style="font-size: 13px; color: var(--text-muted);">Arahkan pelanggan untuk scan QR Code di bawah ini.</p>
                     <div style="background: white; padding: 15px; border-radius: 10px; display: inline-block; margin: 10px 0; border: 2px dashed var(--accent);">
-                        <!-- Menggunakan API publik untuk generate dummy QR code sesuai nominal -->
                         <img src="https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=DUMMY-QRIS-${total}" alt="QRIS" style="width: 200px; height: 200px;">
                     </div>
                     <h3 style="color: var(--primary); font-weight: 900;">Total: Rp ${total.toLocaleString('id-ID')}</h3>
                     <p style="font-size: 11px; color: var(--danger);">*Pastikan pembayaran telah masuk ke mutasi sebelum klik Konfirmasi.</p>
-                `,
-                showCancelButton: true,
-                confirmButtonText: '<i class="fas fa-check-circle"></i> Dana Sudah Masuk',
-                cancelButtonText: 'Batal',
-                confirmButtonColor: 'var(--success)'
-            }).then((result) => {
-                if (result.isConfirmed) {
-                    prosesCheckout(total, total, 'QRIS');
-                    Swal.fire({ icon: 'success', title: 'Transaksi QRIS Berhasil!', showConfirmButton: false, timer: 1500 });
-                }
-            });
+                `, showCancelButton: true, confirmButtonText: '<i class="fas fa-check-circle"></i> Dana Sudah Masuk', cancelButtonText: 'Batal', confirmButtonColor: 'var(--success)'
+            }).then((result) => { if (result.isConfirmed) { prosesCheckout(total, total, 'QRIS'); Swal.fire({ icon: 'success', title: 'Transaksi QRIS Berhasil!', showConfirmButton: false, timer: 1500 }); } });
         }
 
         function cetakNotaHTML(trx) {
             let area = document.getElementById('receipt-print-area');
             let itemHtml = trx.items.map(i => `<div class="receipt-row"><span>${i.nama} x${i.qty}</span><span>Rp ${(i.harga*i.qty).toLocaleString('id-ID')}</span></div>${i.catatan ? `<div style="font-size:10px; color:#555; margin-left:5px;">* ${i.catatan}</div>` : ''}`).join('');
             area.innerHTML = `
-                <div style="text-align: center; margin-bottom: 10px;">
-                    <h3 style="margin:0; font-size: 15px;">${DB.settingStruk.namaToko}</h3>
-                    <div style="font-size:10px;">${DB.settingStruk.alamat}</div>
-                </div>
+                <div style="text-align: center; margin-bottom: 10px;"><h3 style="margin:0; font-size: 15px;">${DB.settingStruk.namaToko}</h3><div style="font-size:10px;">${DB.settingStruk.alamat}</div></div>
                 <div class="receipt-line"></div>
                 <div class="receipt-row"><span>Nota: ${trx.idNota}</span><span>${trx.waktu.split(' ')[0]}</span></div>
                 <div class="receipt-row"><span>Kasir: ${trx.kasir}</span><span>${trx.tipePesanan}</span></div>
                 <div class="receipt-row"><span>Meja: ${trx.meja}</span><span>Byr: ${trx.metode}</span></div>
-                <div class="receipt-line"></div>
-                ${itemHtml}
-                <div class="receipt-line"></div>
+                <div class="receipt-line"></div>${itemHtml}<div class="receipt-line"></div>
                 <div class="receipt-row" style="font-weight: bold; font-size: 13px;"><span>TOTAL</span><span>Rp ${trx.totalNota.toLocaleString('id-ID')}</span></div>
                 <div class="receipt-row"><span>Bayar</span><span>Rp ${trx.bayar.toLocaleString('id-ID')}</span></div>
                 <div class="receipt-row"><span>Kembali</span><span>Rp ${(trx.bayar - trx.totalNota).toLocaleString('id-ID')}</span></div>
-                <div class="receipt-line"></div>
-                <div style="text-align: center; font-size:10px; margin-top: 8px;">${DB.settingStruk.footer}</div>`;
+                <div class="receipt-line"></div><div style="text-align: center; font-size:10px; margin-top: 8px;">${DB.settingStruk.footer}</div>`;
             window.print();
         }
 
         async function generateTeksStrukBluetooth(trx) {
-            let formatLine = (left, right) => {
-                let l = String(left); let r = String(right);
-                let space = 32 - l.length - r.length;
-                return l + ' '.repeat(space > 0 ? space : 1) + r;
-            };
-            let textBT = '\x1B\x61\x01' + DB.settingStruk.namaToko + '\n'; 
-            textBT += '\x1B\x61\x00'; 
-            textBT += DB.settingStruk.alamat + '\n';
-            textBT += '--------------------------------\n';
-            textBT += 'Nota : ' + trx.idNota + '\nKasir: ' + trx.kasir + '\nWaktu: ' + trx.waktu.split(' ')[0] + '\n';
-            textBT += '--------------------------------\n';
-            trx.items.forEach(item => { 
-                let sub = item.harga * item.qty; 
-                textBT += item.nama.substring(0, 32) + '\n';
-                let calc = `  ${item.qty} x ${item.harga.toLocaleString('id-ID')}`;
-                textBT += formatLine(calc, sub.toLocaleString('id-ID')) + '\n';
-                if(item.catatan) textBT += `  * ${item.catatan}\n`;
-            });
-            textBT += '--------------------------------\n';
-            textBT += formatLine('TOTAL', 'Rp ' + trx.totalNota.toLocaleString('id-ID')) + '\n';
-            textBT += formatLine('BAYAR', 'Rp ' + trx.bayar.toLocaleString('id-ID')) + '\n';
-            textBT += formatLine('KEMBALI', 'Rp ' + (trx.bayar - trx.totalNota).toLocaleString('id-ID')) + '\n';
-            textBT += '--------------------------------\n\x1B\x61\x01' + DB.settingStruk.footer + '\n\n\n';
+            let formatLine = (left, right) => { let l = String(left); let r = String(right); let space = 32 - l.length - r.length; return l + ' '.repeat(space > 0 ? space : 1) + r; };
+            let textBT = '\x1B\x61\x01' + DB.settingStruk.namaToko + '\n\x1B\x61\x00' + DB.settingStruk.alamat + '\n--------------------------------\nNota : ' + trx.idNota + '\nKasir: ' + trx.kasir + '\nWaktu: ' + trx.waktu.split(' ')[0] + '\n--------------------------------\n';
+            trx.items.forEach(item => { let sub = item.harga * item.qty; textBT += item.nama.substring(0, 32) + '\n'; let calc = `  ${item.qty} x ${item.harga.toLocaleString('id-ID')}`; textBT += formatLine(calc, sub.toLocaleString('id-ID')) + '\n'; if(item.catatan) textBT += `  * ${item.catatan}\n`; });
+            textBT += '--------------------------------\n' + formatLine('TOTAL', 'Rp ' + trx.totalNota.toLocaleString('id-ID')) + '\n' + formatLine('BAYAR', 'Rp ' + trx.bayar.toLocaleString('id-ID')) + '\n' + formatLine('KEMBALI', 'Rp ' + (trx.bayar - trx.totalNota).toLocaleString('id-ID')) + '\n--------------------------------\n\x1B\x61\x01' + DB.settingStruk.footer + '\n\n\n';
             await cetakBluetoothRaw(textBT);
         }
 
@@ -1168,10 +926,8 @@
             if (!navigator.bluetooth) return alert("Bluetooth tidak didukung browser ini.");
             try { 
                 btDevice = await navigator.bluetooth.requestDevice({ filters: [{services: ['000018f0-0000-1000-8000-00805f9b34fb']}], optionalServices: ['000018f0-0000-1000-8000-00805f9b34fb'] }); 
-                const server = await btDevice.gatt.connect(); 
-                const service = await server.getPrimaryService('000018f0-0000-1000-8000-00805f9b34fb'); 
-                btCharacteristic = await service.getCharacteristic('00002af1-0000-1000-8000-00805f9b34fb'); 
-                document.getElementById('printer-status').innerHTML = `<span style="color:var(--success);">✅ Terhubung: ${btDevice.name}</span>`; 
+                const server = await btDevice.gatt.connect(); const service = await server.getPrimaryService('000018f0-0000-1000-8000-00805f9b34fb'); 
+                btCharacteristic = await service.getCharacteristic('00002af1-0000-1000-8000-00805f9b34fb'); document.getElementById('printer-status').innerHTML = `<span style="color:var(--success);">✅ Terhubung: ${btDevice.name}</span>`; 
                 DB.printerName = btDevice.name; saveDatabase();
             } catch (err) { console.error(err); }
         }
@@ -1179,17 +935,12 @@
         async function autoConnectPrinter() {
             if (navigator.bluetooth && navigator.bluetooth.getDevices) {
                 try {
-                    const devices = await navigator.bluetooth.getDevices();
-                    if(!DB.printerName) return; 
+                    const devices = await navigator.bluetooth.getDevices(); if(!DB.printerName) return; 
                     for (const device of devices) {
                         if (device.name !== DB.printerName) continue; 
-                        const server = await device.gatt.connect(); 
-                        const service = await server.getPrimaryService('000018f0-0000-1000-8000-00805f9b34fb'); 
-                        btCharacteristic = await service.getCharacteristic('00002af1-0000-1000-8000-00805f9b34fb'); 
-                        btDevice = device;
-                        let statusEl = document.getElementById('printer-status'); 
-                        if(statusEl) statusEl.innerHTML = `<span style="color:var(--success);">✅ Terhubung Otomatis: ${device.name}</span>`; 
-                        break; 
+                        const server = await device.gatt.connect(); const service = await server.getPrimaryService('000018f0-0000-1000-8000-00805f9b34fb'); 
+                        btCharacteristic = await service.getCharacteristic('00002af1-0000-1000-8000-00805f9b34fb'); btDevice = device;
+                        let statusEl = document.getElementById('printer-status'); if(statusEl) statusEl.innerHTML = `<span style="color:var(--success);">✅ Terhubung Otomatis: ${device.name}</span>`; break; 
                     }
                 } catch(err) { console.error(err); }
             }
@@ -1197,14 +948,10 @@
 
         async function cetakBluetoothRaw(text) { 
             if(!btCharacteristic) return false; 
-            try { 
-                let encoder = new TextEncoder(); let printData = encoder.encode('\x1B\x40' + text + '\n\n\n'); 
-                for(let i = 0; i < printData.length; i += 40) { await btCharacteristic.writeValue(printData.slice(i, i + 40)); await new Promise(r => setTimeout(r, 50)); } 
-                return true; 
-            } catch(e) { return false; } 
+            try { let encoder = new TextEncoder(); let printData = encoder.encode('\x1B\x40' + text + '\n\n\n'); for(let i = 0; i < printData.length; i += 40) { await btCharacteristic.writeValue(printData.slice(i, i + 40)); await new Promise(r => setTimeout(r, 50)); } return true; } 
+            catch(e) { return false; } 
         }
 
-        // NFC & Member
         let isScanningNFC = false; let nfcAbortController = null;
         async function scanNFCToInput(targetInputId, callback = null) {
             if (!('NDEFReader' in window)) { if(typeof Swal !== 'undefined') Swal.fire('Dibatasi', 'WebNFC tidak didukung.', 'warning'); return; }
@@ -1216,10 +963,8 @@
                         nfcAbortController = new AbortController(); const ndef = new NDEFReader(); await ndef.scan({ signal: nfcAbortController.signal });
                         ndef.addEventListener("reading", (event) => {
                             let cardId = event.serialNumber.toUpperCase().replaceAll(':', '');
-                            if (nfcAbortController) nfcAbortController.abort();
-                            isScanningNFC = false; Swal.close();
-                            if(targetInputId) document.getElementById(targetInputId).value = cardId;
-                            if(callback) callback(cardId);
+                            if (nfcAbortController) nfcAbortController.abort(); isScanningNFC = false; Swal.close();
+                            if(targetInputId) document.getElementById(targetInputId).value = cardId; if(callback) callback(cardId);
                         }, { once: true });
                     } catch (error) { isScanningNFC = false; Swal.close(); if(error.name !== 'AbortError') Swal.fire('Gagal', error.message, 'error'); }
                 }
@@ -1229,228 +974,119 @@
         function bayarPakaiKartuNFC() {
             if(keranjang.length === 0) return; let total = keranjang.reduce((sum, item) => sum + (item.harga * item.qty), 0);
             scanNFCToInput(null, (cardId) => {
-                let kartu = DB.kartuPelanggan.find(k => k.id === cardId);
-                if(!kartu) { Swal.fire('Error', 'Kartu belum didaftarkan!', 'error'); return; }
+                let kartu = DB.kartuPelanggan.find(k => k.id === cardId); if(!kartu) { Swal.fire('Error', 'Kartu belum didaftarkan!', 'error'); return; }
                 if(kartu.saldo < total) { Swal.fire('Saldo Kurang', `Sisa saldo hanya Rp ${kartu.saldo.toLocaleString('id-ID')}`, 'error'); return; }
-                kartu.saldo -= total; saveDatabase(); prosesCheckout(total, total, 'Kartu NFC');
-                Swal.fire('Sukses', `Pembayaran Berhasil!\nSisa Saldo: Rp ${kartu.saldo.toLocaleString('id-ID')}`, 'success');
+                kartu.saldo -= total; saveDatabase(); prosesCheckout(total, total, 'Kartu NFC'); Swal.fire('Sukses', `Pembayaran Berhasil!\nSisa Saldo: Rp ${kartu.saldo.toLocaleString('id-ID')}`, 'success');
             });
         }
 
-        // [Perbaikan Performa] Menghindari manipulasi DOM berulang (DOM Thrashing) di Laporan
         function renderLaporanPenjualan() {
-            let filterKios = document.getElementById('sales-kios-filter').value; 
-            let search = document.getElementById('sales-search-input').value.toLowerCase();
-            let tbody = document.querySelector('#sales-history-table tbody');
-            let totalOmset = 0;
-            let htmlTemp = '';
-
+            let filterKios = document.getElementById('sales-kios-filter').value; let search = document.getElementById('sales-search-input').value.toLowerCase(); let tbody = document.querySelector('#sales-history-table tbody'); let totalOmset = 0; let htmlTemp = '';
             DB.riwayatPenjualan.forEach(nota => {
-                let itemsFiltered = nota.items.filter(i => filterKios === 'ALL' || i.kios === filterKios);
-                if(itemsFiltered.length === 0) return;
+                let itemsFiltered = nota.items.filter(i => filterKios === 'ALL' || i.kios === filterKios); if(itemsFiltered.length === 0) return;
                 if(search && !nota.idNota.toLowerCase().includes(search) && !nota.kasir.toLowerCase().includes(search)) return;
-
-                let subTotal = itemsFiltered.reduce((sum, i) => sum + (i.harga*i.qty), 0);
-                if(!nota.isVoid) totalOmset += subTotal;
-
+                let subTotal = itemsFiltered.reduce((sum, i) => sum + (i.harga*i.qty), 0); if(!nota.isVoid) totalOmset += subTotal;
                 let durasiStr = '-';
-                if(nota.waktuSelesaiMs && nota.waktuMulaiMs) {
-                    let diffMin = Math.round((nota.waktuSelesaiMs - nota.waktuMulaiMs) / 60000);
-                    durasiStr = `${diffMin} Menit (${nota.statusAntrian})`;
-                } else {
-                    durasiStr = `Sedang (${nota.statusAntrian})`;
-                }
-
-                let detail = itemsFiltered.map(i => `• ${i.nama} x${i.qty}`).join('<br>'); 
-                let trClass = nota.isVoid ? 'row-void' : '';
-                let actBtn = nota.isVoid ? `<span style="color:var(--danger); font-weight:bold; font-size:11px;">VOID</span>` : 
-                    `<button class="btn-action btn-outline" style="padding: 4px 8px; font-size:10px;" onclick="cetakUlangNota('${nota.idNota}')"><i class="fas fa-print"></i></button>
-                     <button class="btn-action" style="background:var(--danger); padding: 4px 8px; font-size:10px;" onclick="prosesVoid('${nota.idNota}')">VOID</button>`;
-                
+                if(nota.waktuSelesaiMs && nota.waktuMulaiMs) { let diffMin = Math.round((nota.waktuSelesaiMs - nota.waktuMulaiMs) / 60000); durasiStr = `${diffMin} Menit (${nota.statusAntrian})`; } else { durasiStr = `Sedang (${nota.statusAntrian})`; }
+                let detail = itemsFiltered.map(i => `• ${i.nama} x${i.qty}`).join('<br>'); let trClass = nota.isVoid ? 'row-void' : '';
+                let actBtn = nota.isVoid ? `<span style="color:var(--danger); font-weight:bold; font-size:11px;">VOID</span>` : `<button class="btn-action btn-outline" style="padding: 4px 8px; font-size:10px;" onclick="cetakUlangNota('${nota.idNota}')"><i class="fas fa-print"></i></button> <button class="btn-action" style="background:var(--danger); padding: 4px 8px; font-size:10px;" onclick="prosesVoid('${nota.idNota}')">VOID</button>`;
                 htmlTemp += `<tr class="${trClass}"><td><code>${nota.idNota}</code><br><span style="font-size:10px; color:gray;">${nota.waktu}</span></td><td><b>${nota.kasir}</b><br><span style="font-size:10px; color:var(--accent);">${nota.metode}</span></td><td style="font-size:11px; line-height: 1.4;">${detail}</td><td><span style="font-weight:bold; font-size:11px; color:var(--secondary);">${durasiStr}</span></td><td><b style="color: var(--primary);">Rp ${subTotal.toLocaleString('id-ID')}</b></td><td>${actBtn}</td></tr>`;
             });
-            tbody.innerHTML = htmlTemp;
-            document.getElementById('total-omset-display').innerText = `Rp ${totalOmset.toLocaleString('id-ID')}`;
+            tbody.innerHTML = htmlTemp; document.getElementById('total-omset-display').innerText = `Rp ${totalOmset.toLocaleString('id-ID')}`;
         }
 
         async function prosesVoid(idNota) {
-            const { value: pin } = await Swal.fire({ 
-                title: 'Otorisasi VOID', 
-                input: 'password', 
-                inputLabel: 'Masukkan PIN Kasir Anda / Owner', 
-                showCancelButton: true, 
-                confirmButtonColor: '#ef4444' 
-            });
-
+            const { value: pin } = await Swal.fire({ title: 'Otorisasi VOID', input: 'password', inputLabel: 'Masukkan PIN Kasir Anda / Owner', showCancelButton: true, confirmButtonColor: '#ef4444' });
             if (pin) {
-                let pHash = hashPIN(pin); 
-                let otorisator = DB.karyawanList.find(u => u.pinHash === pHash);
-                
+                let pHash = hashPIN(pin); let otorisator = DB.karyawanList.find(u => u.pinHash === pHash);
                 if(!otorisator) return Swal.fire('Ditolak', 'PIN yang Anda masukkan salah!', 'error');
-                
-                let trx = DB.riwayatPenjualan.find(t => t.idNota === idNota);
-                if(!trx) return;
-
-                let isOwner = otorisator.role === 'Owner';
-                let isKasirKiosTerkait = trx.items.some(i => i.kios === otorisator.kios);
-
-                if(!isOwner && !isKasirKiosTerkait) {
-                    return Swal.fire('Akses Ditolak', 'Anda tidak bisa membatalkan transaksi dari kios lain!', 'error');
-                }
-                
-                if(!trx.isVoid) {
-                    trx.isVoid = true; 
-                    trx.items.forEach(item => { 
-                        let p = DB.produkList.find(x => x.id === item.id && x.kios === item.kios); 
-                        if(p) p.stok += item.qty; 
-                    });
-                    saveDatabase(); 
-                    renderLaporanPenjualan(); 
-                    updateQueueCounters();
-                    Swal.fire('Void Berhasil', 'Transaksi dibatalkan dan stok dikembalikan.', 'success');
-                }
+                let trx = DB.riwayatPenjualan.find(t => t.idNota === idNota); if(!trx) return;
+                let isOwner = otorisator.role === 'Owner'; let isKasirKiosTerkait = trx.items.some(i => i.kios === otorisator.kios);
+                if(!isOwner && !isKasirKiosTerkait) { return Swal.fire('Akses Ditolak', 'Anda tidak bisa membatalkan transaksi dari kios lain!', 'error'); }
+                if(!trx.isVoid) { trx.isVoid = true; trx.items.forEach(item => { let p = DB.produkList.find(x => x.id === item.id && x.kios === item.kios); if(p) p.stok += item.qty; }); saveDatabase(); renderLaporanPenjualan(); updateQueueCounters(); Swal.fire('Void Berhasil', 'Transaksi dibatalkan dan stok dikembalikan.', 'success'); }
             }
         }
         
         function cetakUlangNota(idNota) { let trx = DB.riwayatPenjualan.find(t => t.idNota === idNota); if(trx) { if(DB.settingPrinter === 'browser') cetakNotaHTML(trx); else if(DB.settingPrinter === 'bluetooth') generateTeksStrukBluetooth(trx); } }
         function downloadCSVLaporan() { let data = [["ID_Nota", "Waktu", "Kasir", "Metode", "Total", "Status"]]; DB.riwayatPenjualan.forEach(r => { data.push([r.idNota, r.waktu, r.kasir, r.metode, r.totalNota, r.isVoid ? "VOID" : "VALID"]); }); downloadCSV(data, "Laporan_Penjualan.csv"); }
 
-        // [Perbaikan Performa] Menghindari manipulasi DOM berulang (DOM Thrashing) di Stok
         function renderStok() {
-            let tbody = document.querySelector('#stock-table tbody'); 
-            let data = userAktif.role === 'Owner' ? DB.produkList : DB.produkList.filter(p => p.kios === userAktif.kios);
-            let htmlTemp = '';
-            
-            data.forEach(p => {
-                htmlTemp += `<tr><td><code>${p.id}</code></td><td><b>${p.nama}</b></td><td>${p.kategori}</td><td><span class="badge-kios">${p.kios}</span></td><td>Rp ${p.harga.toLocaleString('id-ID')}</td>
-                    <td><input type="number" value="${p.stok}" class="form-control" style="width:70px; padding:4px;" onchange="updateStokCepat('${p.id}', '${p.kios}', this.value)"></td>
-                    <td><button class="btn-action" style="background:var(--danger); padding:4px 10px;" onclick="hapusBarang('${p.id}', '${p.kios}')"><i class="fas fa-trash"></i></button></td></tr>`;
-            });
+            let tbody = document.querySelector('#stock-table tbody'); let data = userAktif.role === 'Owner' ? DB.produkList : DB.produkList.filter(p => p.kios === userAktif.kios); let htmlTemp = '';
+            data.forEach(p => { htmlTemp += `<tr><td><code>${p.id}</code></td><td><b>${p.nama}</b></td><td>${p.kategori}</td><td><span class="badge-kios">${p.kios}</span></td><td>Rp ${p.harga.toLocaleString('id-ID')}</td><td><input type="number" value="${p.stok}" class="form-control" style="width:70px; padding:4px;" onchange="updateStokCepat('${p.id}', '${p.kios}', this.value)"></td><td><button class="btn-action" style="background:var(--danger); padding:4px 10px;" onclick="hapusBarang('${p.id}', '${p.kios}')"><i class="fas fa-trash"></i></button></td></tr>`; });
             tbody.innerHTML = htmlTemp;
         }
         
         function tambahBarang() {
-            let id = document.getElementById('new-barcode').value.trim(); let nama = document.getElementById('new-name').value.trim(); 
-            let kategori = document.getElementById('new-kategori').value; let gambar = document.getElementById('new-img-url').value.trim();
+            let id = document.getElementById('new-barcode').value.trim(); let nama = document.getElementById('new-name').value.trim(); let kategori = document.getElementById('new-kategori').value; let gambar = document.getElementById('new-img-url').value.trim();
             let harga = parseInt(document.getElementById('new-price').value || 0); let stok = parseInt(document.getElementById('new-stock').value || 0); let kios = document.getElementById('new-kios').value;
             if(!id || !nama || harga <= 0) return Swal.fire('Peringatan', 'Lengkapi form dengan benar!', 'warning');
             if(DB.produkList.some(p => p.id === id && p.kios === kios)) return Swal.fire('Error', 'ID Menu sudah terpakai di kios ini!', 'error');
             DB.produkList.push({ id, nama, harga, stok, kios, kategori, gambar }); saveDatabase(); renderStok();
-            document.getElementById('new-barcode').value=''; document.getElementById('new-name').value=''; document.getElementById('new-img-url').value='';
-            Swal.fire('Sukses', 'Menu berhasil ditambahkan', 'success');
+            document.getElementById('new-barcode').value=''; document.getElementById('new-name').value=''; document.getElementById('new-img-url').value=''; Swal.fire('Sukses', 'Menu berhasil ditambahkan', 'success');
         }
         function hapusBarang(id, kios) { DB.produkList = DB.produkList.filter(p => !(p.id === id && p.kios === kios)); saveDatabase(); renderStok(); }
         function updateStokCepat(id, kios, val) { let p = DB.produkList.find(x => x.id === id && x.kios === kios); if(p) { p.stok = parseInt(val||0); saveDatabase(); } }
 
-        // [Perbaikan Performa] Menghindari manipulasi DOM berulang (DOM Thrashing) di Opname
         function renderOpname() {
-            let filterKios = document.getElementById('opname-kios-filter').value; 
-            let tbody = document.querySelector('#opname-table tbody'); 
-            let htmlTemp = '';
-            
-            DB.produkList.filter(p => p.kios === filterKios).forEach(p => {
-                htmlTemp += `
-                    <tr>
-                        <td><code>${p.id}</code></td>
-                        <td><b>${p.nama}</b></td>
-                        <td style="font-weight: 800; color: var(--primary);" id="komputer-stok-${p.id}">${p.stok} pcs</td>
-                        <td><input type="number" id="real-stok-${p.id}" class="form-control" style="width:100px;" placeholder="Fisik..." oninput="hitungSelisihOpname('${p.id}', ${p.stok})"></td>
-                        <td><span id="selisih-badge-${p.id}" style="font-weight:bold; font-size:12px;">-</span></td>
-                        <td><button class="btn-action" style="background:var(--accent);" onclick="ajustOpname('${p.id}', '${p.kios}')"><i class="fas fa-check"></i> Audit</button></td>
-                    </tr>`;
-            });
+            let filterKios = document.getElementById('opname-kios-filter').value; let tbody = document.querySelector('#opname-table tbody'); let htmlTemp = '';
+            DB.produkList.filter(p => p.kios === filterKios).forEach(p => { htmlTemp += `<tr><td><code>${p.id}</code></td><td><b>${p.nama}</b></td><td style="font-weight: 800; color: var(--primary);" id="komputer-stok-${p.id}">${p.stok} pcs</td><td><input type="number" id="real-stok-${p.id}" class="form-control" style="width:100px;" placeholder="Fisik..." oninput="hitungSelisihOpname('${p.id}', ${p.stok})"></td><td><span id="selisih-badge-${p.id}" style="font-weight:bold; font-size:12px;">-</span></td><td><button class="btn-action" style="background:var(--accent);" onclick="ajustOpname('${p.id}', '${p.kios}')"><i class="fas fa-check"></i> Audit</button></td></tr>`; });
             tbody.innerHTML = htmlTemp;
         }
 
         function hitungSelisihOpname(id, stokKomputer) {
-            let val = document.getElementById(`real-stok-${id}`).value;
-            let badge = document.getElementById(`selisih-badge-${id}`);
-            if(val === '') {
-                badge.innerText = '-';
-                badge.style.color = 'inherit';
-                return;
-            }
-            let fisik = parseInt(val);
-            let diff = fisik - stokKomputer;
-            if(diff > 0) {
-                badge.innerText = `+${diff} (Lebih)`;
-                badge.style.color = 'var(--success)';
-            } else if(diff < 0) {
-                badge.innerText = `${diff} (Kurang)`;
-                badge.style.color = 'var(--danger)';
-            } else {
-                badge.innerText = `0 (Seimbang)`;
-                badge.style.color = 'var(--secondary)';
-            }
+            let val = document.getElementById(`real-stok-${id}`).value; let badge = document.getElementById(`selisih-badge-${id}`);
+            if(val === '') { badge.innerText = '-'; badge.style.color = 'inherit'; return; }
+            let fisik = parseInt(val); let diff = fisik - stokKomputer;
+            if(diff > 0) { badge.innerText = `+${diff} (Lebih)`; badge.style.color = 'var(--success)'; } else if(diff < 0) { badge.innerText = `${diff} (Kurang)`; badge.style.color = 'var(--danger)'; } else { badge.innerText = `0 (Seimbang)`; badge.style.color = 'var(--secondary)'; }
         }
 
-        function ajustOpname(id, kios) {
-            let val = document.getElementById(`real-stok-${id}`).value;
-            if(val === '') return Swal.fire('Perhatian', 'Masukkan jumlah stok fisik terlebih dahulu.', 'warning');
-            let numVal = parseInt(val); 
-            let p = DB.produkList.find(x => x.id === id && x.kios === kios);
-            if(p) { 
-                let diff = numVal - p.stok;
-                p.stok = numVal; 
-                saveDatabase(); 
-                renderOpname(); 
-                Swal.fire('Audit Berhasil', `Stok diperbarui. Selisih tercatat: ${diff >= 0 ? '+' + diff : diff} pcs.`, 'success'); 
-            }
-        }
+        function ajustOpname(id, kios) { let val = document.getElementById(`real-stok-${id}`).value; if(val === '') return Swal.fire('Perhatian', 'Masukkan jumlah stok fisik terlebih dahulu.', 'warning'); let numVal = parseInt(val); let p = DB.produkList.find(x => x.id === id && x.kios === kios); if(p) { let diff = numVal - p.stok; p.stok = numVal; saveDatabase(); renderOpname(); Swal.fire('Audit Berhasil', `Stok diperbarui. Selisih tercatat: ${diff >= 0 ? '+' + diff : diff} pcs.`, 'success'); } }
 
-        // Pengaturan & Karyawan
         function muatDataPengaturanUI() { document.getElementById('setting-struk-nama').value = DB.settingStruk.namaToko; document.getElementById('setting-struk-alamat').value = DB.settingStruk.alamat; document.getElementById('setting-struk-footer').value = DB.settingStruk.footer; document.getElementById('setting-printer-mode').value = DB.settingPrinter; gantiModePrinter(); }
         function simpanPengaturanStruk() { DB.settingStruk.namaToko = document.getElementById('setting-struk-nama').value; DB.settingStruk.alamat = document.getElementById('setting-struk-alamat').value; DB.settingStruk.footer = document.getElementById('setting-struk-footer').value; saveDatabase(); document.getElementById('header-app-name').innerText = DB.settingStruk.namaToko; Swal.fire('Sukses', 'Disimpan!', 'success'); }
         function gantiModePrinter() { DB.settingPrinter = document.getElementById('setting-printer-mode').value; saveDatabase(); document.getElementById('printer-help-browser').style.display = DB.settingPrinter === 'browser' ? 'block' : 'none'; document.getElementById('printer-help-rawbt').style.display = DB.settingPrinter === 'rawbt' ? 'block' : 'none'; document.getElementById('printer-help-bluetooth').style.display = DB.settingPrinter === 'bluetooth' ? 'block' : 'none'; }
         function testCetakPrinter() { if(DB.settingPrinter === 'browser') window.print(); else if(DB.settingPrinter === 'bluetooth') generateTeksStrukBluetooth({idNota: 'TEST', kasir: userAktif.nama, waktu: new Date().toLocaleString('id-ID'), items: [{nama: 'TEST PRINTER', qty: 1, harga: 0, catatan: ''}], totalNota: 0, bayar: 0, metode: 'Tunai'}); }
 
-        // [Perbaikan Performa] DOM Thrashing
         function renderKaryawan() { 
-            let tbody = document.querySelector('#karyawan-table tbody'); 
-            let htmlTemp = '';
+            let tbody = document.querySelector('#karyawan-table tbody'); let htmlTemp = '';
             DB.karyawanList.forEach((k, idx) => { 
-                htmlTemp += `<tr><td><b>${k.nama}</b></td><td>${k.role}</td><td><span class="badge-kios">${k.kios}</span></td><td>${k.role!=='Owner'?`<button class="btn-action" style="background:var(--danger); padding:4px 10px;" onclick="hapusKaryawan(${idx})"><i class="fas fa-trash"></i></button>`:'-'}</td></tr>`; 
+                // Menampilkan pinAsli yang baru ditambahkan jika role adalah Owner
+                let pinTampil = k.pinAsli ? k.pinAsli : "******";
+                htmlTemp += `<tr>
+                    <td><b>${k.nama}</b></td>
+                    <td>${k.role}</td>
+                    <td><span class="badge-kios">${k.kios}</span></td>
+                    <td><span class="badge-pin">${pinTampil}</span></td>
+                    <td>${k.role!=='Owner'?`<button class="btn-action" style="background:var(--danger); padding:4px 10px;" onclick="hapusKaryawan(${idx})"><i class="fas fa-trash"></i></button>`:'-'}</td>
+                </tr>`; 
             }); 
             tbody.innerHTML = htmlTemp;
         }
-        function tambahKaryawan() { let nama = document.getElementById('k-nama').value; let pin = document.getElementById('k-pin').value; let kios = document.getElementById('k-role-kios').value; if(nama && pin) { DB.karyawanList.push({nama, pinHash:hashPIN(pin), role:'Tenant', kios}); saveDatabase(); renderKaryawan(); document.getElementById('k-nama').value=''; document.getElementById('k-pin').value=''; Swal.fire('Sukses', 'Ditambahkan!', 'success'); } }
+
+        function tambahKaryawan() { 
+            let nama = document.getElementById('k-nama').value; let pin = document.getElementById('k-pin').value; let kios = document.getElementById('k-role-kios').value; 
+            if(nama && pin) { 
+                // Menyimpan pinHash untuk keamanan login dan pinAsli untuk diintip owner
+                DB.karyawanList.push({nama, pinHash:hashPIN(pin), pinAsli: pin, role:'Tenant', kios}); 
+                saveDatabase(); renderKaryawan(); 
+                document.getElementById('k-nama').value=''; document.getElementById('k-pin').value=''; 
+                Swal.fire('Sukses', 'Ditambahkan!', 'success'); 
+            } 
+        }
+
         function hapusKaryawan(idx) { Swal.fire({ title:'Hapus?', icon:'warning', showCancelButton:true }).then(r => { if(r.isConfirmed) { DB.karyawanList.splice(idx,1); saveDatabase(); renderKaryawan(); } }); }
         
-        // [Perbaikan Performa] DOM Thrashing
-        function renderKiosManagerList() { 
-            let tbody = document.querySelector('#kios-list-table tbody'); 
-            let htmlTemp = '';
-            DB.kiosList.forEach((k, idx) => { 
-                let cnt = DB.produkList.filter(p=>p.kios===k).length; 
-                htmlTemp += `<tr><td><b>${k}</b></td><td>${cnt} Menu</td><td><button class="btn-action" style="background:var(--danger); padding:4px 10px;" onclick="hapusKiosDinamis(${idx}, '${k}')"><i class="fas fa-trash"></i> Tutup</button></td></tr>`; 
-            }); 
-            tbody.innerHTML = htmlTemp;
-        }
+        function renderKiosManagerList() { let tbody = document.querySelector('#kios-list-table tbody'); let htmlTemp = ''; DB.kiosList.forEach((k, idx) => { let cnt = DB.produkList.filter(p=>p.kios===k).length; htmlTemp += `<tr><td><b>${k}</b></td><td>${cnt} Menu</td><td><button class="btn-action" style="background:var(--danger); padding:4px 10px;" onclick="hapusKiosDinamis(${idx}, '${k}')"><i class="fas fa-trash"></i> Tutup</button></td></tr>`; }); tbody.innerHTML = htmlTemp; }
         function tambahKiosDinamis() { let n = document.getElementById('new-kios-name').value; if(n && !DB.kiosList.includes(n)) { DB.kiosList.push(n); saveDatabase(); buildDropdowns(); renderKiosManagerList(); document.getElementById('new-kios-name').value = ''; Swal.fire('Sukses', 'Kios dibuka!', 'success'); } }
         function hapusKiosDinamis(idx, n) { Swal.fire({ title:`Tutup kios ${n}?`, icon:'warning', showCancelButton:true }).then(r => { if(r.isConfirmed) { DB.kiosList.splice(idx,1); DB.produkList=DB.produkList.filter(p=>p.kios!==n); saveDatabase(); buildDropdowns(); renderKiosManagerList(); } }); }
         function hapusSemuaRiwayat() { Swal.fire({ title:'Reset log?', icon:'warning', showCancelButton:true }).then(r => { if(r.isConfirmed) { DB.riwayatPenjualan = []; saveDatabase(); renderLaporanPenjualan(); updateQueueCounters(); } }); }
 
-        // [Perbaikan Performa] DOM Thrashing
-        function renderKartu() { 
-            if(userAktif.role !== 'Owner') return; 
-            let tbody = document.querySelector('#cards-table tbody'); 
-            let htmlTemp = '';
-            DB.kartuPelanggan.forEach((k, idx) => { 
-                htmlTemp += `<tr><td><code>${k.id}</code></td><td><b>${k.nama}</b></td><td style="color:var(--success); font-weight:800;">Rp ${k.saldo.toLocaleString('id-ID')}</td><td><button class="btn-action" style="background:var(--danger); padding:4px 10px;" onclick="hapusKartu(${idx})"><i class="fas fa-trash"></i></button></td></tr>`; 
-            }); 
-            tbody.innerHTML = htmlTemp;
-        }
+        function renderKartu() { if(userAktif.role !== 'Owner') return; let tbody = document.querySelector('#cards-table tbody'); let htmlTemp = ''; DB.kartuPelanggan.forEach((k, idx) => { htmlTemp += `<tr><td><code>${k.id}</code></td><td><b>${k.nama}</b></td><td style="color:var(--success); font-weight:800;">Rp ${k.saldo.toLocaleString('id-ID')}</td><td><button class="btn-action" style="background:var(--danger); padding:4px 10px;" onclick="hapusKartu(${idx})"><i class="fas fa-trash"></i></button></td></tr>`; }); tbody.innerHTML = htmlTemp; }
         function hapusKartu(idx) { DB.kartuPelanggan.splice(idx,1); saveDatabase(); renderKartu(); }
         function cekSaldoKartu() { let id = document.getElementById('topup-card-id').value; let k = DB.kartuPelanggan.find(x => x.id === id); if(k) { document.getElementById('info-nama-pemilik').innerText = k.nama; document.getElementById('info-saldo-pemilik').innerText = 'Rp ' + k.saldo.toLocaleString('id-ID'); document.getElementById('topup-info-box').style.display = 'block'; } else { Swal.fire('Tidak Ditemukan', 'Kartu tidak terdaftar di sistem.', 'error'); } }
         function eksekusiTopUp() { let id = document.getElementById('topup-card-id').value; let k = DB.kartuPelanggan.find(x => x.id === id); let nominal = parseInt(document.getElementById('topup-amount').value || 0); if(k && nominal > 0) { k.saldo += nominal; saveDatabase(); renderKartu(); Swal.fire('Sukses', 'Top Up Berhasil!', 'success'); document.getElementById('topup-amount').value = ''; document.getElementById('topup-info-box').style.display = 'none'; } }
 
-        setInterval(() => {
-            let now = new Date();
-            let t = document.getElementById('clock-time');
-            let d = document.getElementById('clock-date');
-            if(t) t.innerText = now.toLocaleTimeString('id-ID', { hour12: false });
-            if(d) d.innerText = now.toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
-        }, 1000);
+        setInterval(() => { let now = new Date(); let t = document.getElementById('clock-time'); let d = document.getElementById('clock-date'); if(t) t.innerText = now.toLocaleTimeString('id-ID', { hour12: false }); if(d) d.innerText = now.toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }); }, 1000);
     </script>
 </body>
 </html>
