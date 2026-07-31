@@ -209,11 +209,13 @@
             <div class="menu-item menu-owner-restricted" onclick="switchMenu('stok', this)"><i class="fas fa-box-open"></i> Database Menu</div>
             <div class="menu-item" onclick="switchMenu('opname', this)"><i class="fas fa-clipboard-list"></i> Stock Opname</div>
 
+            <div class="menu-section">Konfigurasi</div>
+            <div class="menu-item" onclick="switchMenu('pengaturan', this)"><i class="fas fa-print"></i> Pengaturan Printer</div>
+
             <div id="menu-owner-only" style="display: none;">
                 <div class="menu-section">Manajemen Pusat</div>
                 <div class="menu-item" onclick="switchMenu('tenant', this)"><i class="fas fa-store-alt"></i> Data Kios</div>
                 <div class="menu-item" onclick="switchMenu('karyawan', this)"><i class="fas fa-users-cog"></i> Karyawan</div>
-                <div class="menu-item" onclick="switchMenu('pengaturan', this)"><i class="fas fa-tools"></i> Pengaturan Sistem</div>
             </div>
             
             <div style="flex: 1;"></div>
@@ -530,9 +532,11 @@
 
             <!-- SECTION: PENGATURAN -->
             <div id="sec-pengaturan" class="dashboard-section">
-                <h2 style="color: var(--primary); margin-bottom: 15px;"><i class="fas fa-tools"></i> Pengaturan Sistem Terpusat</h2>
+                <h2 style="color: var(--primary); margin-bottom: 15px;"><i class="fas fa-tools"></i> Pengaturan Printer & Sistem</h2>
                 <div style="display: flex; gap: 15px; flex-wrap: wrap;">
-                    <div style="flex: 1; background: var(--card-bg); padding: 20px; border-radius: 12px; border: 1px solid var(--border); min-width: 280px;">
+                    
+                    <!-- KOP STRUK (Hanya untuk Owner) -->
+                    <div id="setting-kop-struk" style="flex: 1; background: var(--card-bg); padding: 20px; border-radius: 12px; border: 1px solid var(--border); min-width: 280px; display: none;">
                         <h4 style="margin-bottom: 15px; color: var(--primary); display: flex; align-items: center; gap: 8px; font-size: 14px;"><i class="fas fa-receipt"></i> Kop Struk Printer</h4>
                         <div class="form-group"><label>Nama Toko Utama:</label><input type="text" id="setting-struk-nama" class="form-control"></div>
                         <div class="form-group"><label>Alamat / Kontak:</label><input type="text" id="setting-struk-alamat" class="form-control"></div>
@@ -540,8 +544,9 @@
                         <button class="btn-action" style="background: var(--success); width: 100%; justify-content: center; padding: 12px;" onclick="simpanPengaturanStruk()"><i class="fas fa-save"></i> Simpan Desain</button>
                     </div>
 
+                    <!-- PRINTER THERMAL (Bisa Diakses Semua) -->
                     <div style="flex: 1; background: var(--card-bg); padding: 20px; border-radius: 12px; border: 1px solid var(--border); min-width: 280px;">
-                        <h4 style="margin-bottom: 15px; color: var(--primary); display: flex; align-items: center; gap: 8px; font-size: 14px;"><i class="fas fa-print"></i> Printer Thermal</h4>
+                        <h4 style="margin-bottom: 15px; color: var(--primary); display: flex; align-items: center; gap: 8px; font-size: 14px;"><i class="fas fa-print"></i> Pengaturan Printer Thermal</h4>
                         <div class="form-group">
                             <label>Metode Cetak:</label>
                             <select id="setting-printer-mode" class="form-control" onchange="gantiModePrinter()">
@@ -669,11 +674,13 @@
                 document.querySelectorAll('.menu-owner-restricted').forEach(el => el.style.display = 'flex');
                 document.getElementById('owner-card-list-container').style.display = 'block';
                 document.getElementById('btn-reset-riwayat').style.display = 'inline-flex';
+                document.getElementById('setting-kop-struk').style.display = 'block'; // Tampilkan kop struk untuk owner
             } else {
                 document.getElementById('menu-owner-only').style.display = 'none';
                 document.querySelectorAll('.menu-owner-restricted').forEach(el => el.style.display = 'none');
                 document.getElementById('owner-card-list-container').style.display = 'none';
-                document.getElementById('btn-reset-riwayat').style.display = 'none'; // Sembunyikan tombol reset dari non-owner
+                document.getElementById('btn-reset-riwayat').style.display = 'none'; 
+                document.getElementById('setting-kop-struk').style.display = 'none'; // Sembunyikan kop struk untuk tenant
             }
 
             buildDropdowns(); muatDataPengaturanUI(); gantiKiosPOS(); updateDashboard();
@@ -709,8 +716,8 @@
         }
 
         function switchMenu(menuId, el = null) {
-            // Validasi izin akses (Laporan kini tidak dibatasi)
-            if(userAktif.role !== 'Owner' && (menuId === 'stok' || menuId === 'tenant' || menuId === 'karyawan' || menuId === 'pengaturan')) {
+            // Validasi izin akses (Pengaturan kini tidak dibatasi sepenuhnya, hanya konten di dalamnya)
+            if(userAktif.role !== 'Owner' && (menuId === 'stok' || menuId === 'tenant' || menuId === 'karyawan')) {
                 Swal.fire('Akses Dibatasi', 'Anda tidak memiliki izin mengakses menu ini.', 'warning');
                 return;
             }
