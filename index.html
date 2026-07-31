@@ -202,7 +202,6 @@
             
             <div class="menu-section">Transaksi</div>
             <div class="menu-item" onclick="switchMenu('pembayaran', this)"><i class="fas fa-credit-card"></i> Member & NFC</div>
-            <!-- Akses Laporan/Void kini terbuka untuk non-owner -->
             <div class="menu-item" onclick="switchMenu('laporan', this)"><i class="fas fa-file-invoice-dollar"></i> Riwayat & Void</div>
             
             <div class="menu-section">Gudang & Menu</div>
@@ -645,16 +644,23 @@
             let user = DB.karyawanList.find(u => u.pinHash === inputHash);
 
             if(user) {
-                userAktif = user; kiosAktifPOS = user.role === 'Owner' ? DB.kiosList[0] : user.kios;
+                document.getElementById('input-pin').value = ''; // Reset input
+                userAktif = user; 
+                kiosAktifPOS = user.role === 'Owner' ? DB.kiosList[0] : user.kios;
                 lanjutkanLogin();
             } else {
-                Swal.fire({
-                    icon: 'error',
-                    title: 'PIN Salah',
-                    text: 'PIN yang Anda masukkan tidak terdaftar di sistem. Silakan coba lagi.',
-                    confirmButtonColor: '#ef4444'
-                });
-                document.getElementById('input-pin').value = '';
+                // Hapus input PIN terlebih dahulu
+                document.getElementById('input-pin').value = ''; 
+                
+                // SetTimeout memastikan peringatan error langsung muncul dan browser UI thread ter-update
+                setTimeout(() => {
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'PIN Salah',
+                        text: 'PIN yang Anda masukkan tidak terdaftar di sistem. Silakan coba lagi.',
+                        confirmButtonColor: '#ef4444'
+                    });
+                }, 50);
             }
             return false; 
         }
@@ -674,16 +680,22 @@
                 document.querySelectorAll('.menu-owner-restricted').forEach(el => el.style.display = 'flex');
                 document.getElementById('owner-card-list-container').style.display = 'block';
                 document.getElementById('btn-reset-riwayat').style.display = 'inline-flex';
-                document.getElementById('setting-kop-struk').style.display = 'block'; // Tampilkan kop struk untuk owner
+                document.getElementById('setting-kop-struk').style.display = 'block'; 
             } else {
                 document.getElementById('menu-owner-only').style.display = 'none';
                 document.querySelectorAll('.menu-owner-restricted').forEach(el => el.style.display = 'none');
                 document.getElementById('owner-card-list-container').style.display = 'none';
                 document.getElementById('btn-reset-riwayat').style.display = 'none'; 
-                document.getElementById('setting-kop-struk').style.display = 'none'; // Sembunyikan kop struk untuk tenant
+                document.getElementById('setting-kop-struk').style.display = 'none'; 
             }
 
-            buildDropdowns(); muatDataPengaturanUI(); gantiKiosPOS(); updateDashboard();
+            buildDropdowns(); 
+            muatDataPengaturanUI(); 
+            gantiKiosPOS(); 
+            
+            // Fix: Menjadikan Menu Dashboard otomatis langsung tampil setelah login berhasil
+            switchMenu('dashboard');
+            
             if(DB.settingPrinter === 'bluetooth') autoConnectPrinter();
         }
 
@@ -707,7 +719,7 @@
                 domPos.disabled = true; 
                 
                 domLaporan.innerHTML = `<option value="${userAktif.kios}">${userAktif.kios}</option>`;
-                domLaporan.disabled = true; // Kunci dropdown untuk laporan agar tenant tidak bisa ubah
+                domLaporan.disabled = true; 
             }
 
             document.getElementById('new-kios').innerHTML = optKios;
@@ -716,7 +728,7 @@
         }
 
         function switchMenu(menuId, el = null) {
-            // Validasi izin akses (Pengaturan kini tidak dibatasi sepenuhnya, hanya konten di dalamnya)
+            // Validasi izin akses
             if(userAktif.role !== 'Owner' && (menuId === 'stok' || menuId === 'tenant' || menuId === 'karyawan')) {
                 Swal.fire('Akses Dibatasi', 'Anda tidak memiliki izin mengakses menu ini.', 'warning');
                 return;
@@ -733,7 +745,7 @@
             document.getElementById('sec-' + menuId).classList.add('active');
 
             if(menuId === 'pos') {
-                document.getElementById('input-barcode').focus();
+                // Kode document.getElementById('input-barcode').focus(); dihapus di sini agar keyboard HP tidak otomatis muncul
                 updateQueueCounters();
             } else {
                 if(menuId === 'dashboard') updateDashboard();
@@ -1004,7 +1016,7 @@
                 kasir: userAktif.nama, 
                 tipePesanan: document.getElementById('tipe-pesanan').value, 
                 meja: document.getElementById('nomor-meja').value || "-", 
-                statusAntrian: "Proses", // Langsung masuk ke status Proses sesuai permintaan
+                statusAntrian: "Proses", 
                 isVoid: false, 
                 items: [...keranjang] 
             };
@@ -1320,7 +1332,7 @@
 
         // Kartu & Saldo
         function renderKartu() { 
-            if(userAktif.role !== 'Owner') return; // Tenant tidak boleh melihat daftar kartu
+            if(userAktif.role !== 'Owner') return; 
             let tbody = document.querySelector('#cards-table tbody'); tbody.innerHTML = ''; 
             DB.kartuPelanggan.forEach((k, idx) => { tbody.innerHTML += `<tr><td><code>${k.id}</code></td><td><b>${k.nama}</b></td><td style="color:var(--success); font-weight:800;">Rp ${k.saldo.toLocaleString('id-ID')}</td><td><button class="btn-action" style="background:var(--danger); padding:4px 10px;" onclick="hapusKartu(${idx})"><i class="fas fa-trash"></i></button></td></tr>`; }); 
         }
