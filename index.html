@@ -179,13 +179,11 @@
         </div>
     </div>
 
-    
     <!-- 2. HEADER -->
     <header id="main-header" style="display:none;">
         <div style="display: flex; align-items: center; gap: 15px;">
             <button class="btn-toggle-menu" onclick="toggleSidebar()"><i class="fas fa-bars"></i></button>
             <b style="font-size: 16px; color: white; display: flex; align-items: center; gap: 10px;">
-                <!-- Logo dari Github -->
                 <div style="width: 28px; height: 28px; display: flex; justify-content: center; align-items: center; border-radius: 6px; overflow: hidden; background: white;">
                     <img src="https://raw.githubusercontent.com/jeje-dot/Kasir-kantin-dev/main/icon_mesin_kasir_512x512.png" alt="Logo Kios" style="width: 100%; height: 100%; object-fit: contain;">
                 </div>
@@ -221,7 +219,7 @@
             <div class="menu-item" onclick="switchMenu('opname', this)"><i class="fas fa-clipboard-list"></i> Stock Opname</div>
 
             <div class="menu-section">Konfigurasi</div>
-            <div class="menu-item" onclick="switchMenu('pengaturan', this)"><i class="fas fa-print"></i> Pengaturan Printer</div>
+            <div class="menu-item" onclick="switchMenu('pengaturan', this)"><i class="fas fa-print"></i> Pengaturan Printer & Profil</div>
 
             <div id="menu-owner-only" style="display: none;">
                 <div class="menu-section">Manajemen Pusat</div>
@@ -544,6 +542,14 @@
                 <h2 style="color: var(--primary); margin-bottom: 15px;"><i class="fas fa-tools"></i> Pengaturan Printer & Sistem</h2>
                 <div style="display: flex; gap: 15px; flex-wrap: wrap;">
                     
+                    <!-- BOX PROFIL AKUN (BARU DITAMBAHKAN) -->
+                    <div style="flex: 1; background: var(--card-bg); padding: 20px; border-radius: 12px; border: 1px solid var(--border); min-width: 280px;">
+                        <h4 style="margin-bottom: 15px; color: var(--primary); display: flex; align-items: center; gap: 8px; font-size: 14px;"><i class="fas fa-user-edit"></i> Pengaturan Profil Akun</h4>
+                        <div class="form-group"><label>Ubah Nama Profil:</label><input type="text" id="profil-nama" class="form-control"></div>
+                        <div class="form-group"><label>Ubah PIN (Angka):</label><input type="password" id="profil-pin" class="form-control" maxlength="6"></div>
+                        <button class="btn-action" style="background: var(--accent); width: 100%; justify-content: center; padding: 12px;" onclick="updateProfil()"><i class="fas fa-save"></i> Simpan Profil</button>
+                    </div>
+
                     <div id="setting-kop-struk" style="flex: 1; background: var(--card-bg); padding: 20px; border-radius: 12px; border: 1px solid var(--border); min-width: 280px; display: none;">
                         <h4 style="margin-bottom: 15px; color: var(--primary); display: flex; align-items: center; gap: 8px; font-size: 14px;"><i class="fas fa-receipt"></i> Kop Struk Printer</h4>
                         <div class="form-group"><label>Nama Toko Utama:</label><input type="text" id="setting-struk-nama" class="form-control"></div>
@@ -613,7 +619,6 @@
         let btCharacteristic = null;
         let deferredPrompt = null;
 
-                // Auto-generate manifest dynamic supaya tombol Install PWA muncul di browser modern
         window.addEventListener('DOMContentLoaded', () => {
             const manifestData = {
                 name: "POS Pujasera Enterprise",
@@ -622,15 +627,11 @@
                 display: "standalone",
                 background_color: "#0f172a",
                 theme_color: "#0f172a",
-                icons: [
-                    // Ikon saat aplikasi di-install dari Github
-                    { src: "https://raw.githubusercontent.com/jeje-dot/Kasir-kantin-dev/main/icon_mesin_kasir_512x512.png", sizes: "512x512", type: "image/png" }
-                ]
+                icons: [ { src: "https://raw.githubusercontent.com/jeje-dot/Kasir-kantin-dev/main/icon_mesin_kasir_512x512.png", sizes: "512x512", type: "image/png" } ]
             };
             const stringBlob = new Blob([JSON.stringify(manifestData)], { type: 'application/json' });
             document.getElementById('dynamic-manifest').setAttribute('href', URL.createObjectURL(stringBlob));
         });
-
 
         window.addEventListener('beforeinstallprompt', (e) => {
             e.preventDefault();
@@ -643,9 +644,7 @@
             if (deferredPrompt) {
                 deferredPrompt.prompt();
                 let { outcome } = await deferredPrompt.userChoice;
-                if (outcome === 'accepted') {
-                    document.getElementById('btn-install-pwa').style.display = 'none';
-                }
+                if (outcome === 'accepted') { document.getElementById('btn-install-pwa').style.display = 'none'; }
                 deferredPrompt = null;
             } else {
                 Swal.fire('Info', 'Aplikasi sudah terpasang atau browser Anda tidak mendukung prompt otomatis. Gunakan opsi "Tambahkan ke Layar Utama" pada menu titik tiga browser Anda.', 'info');
@@ -657,93 +656,89 @@
         }
 
         let DB = { kiosList: [], produkList: [], riwayatPenjualan: [], karyawanList: [], settingStruk: {}, kartuPelanggan: [], settingPrinter: 'browser', printerName: '' };
+        let userAktif = null; let kiosAktifPOS = ""; let keranjang = []; 
+        let kategoriAktif = 'Semua'; let currentQueueFilter = 'ALL'; 
+        let isLocked = false; let salahLogCount = 0; let isFirstLoad = true;
 
+        // DIUBAH: Menggunakan onSnapshot agar REAL-TIME (Sinkronisasi Otomatis Antar Perangkat)
         async function initDatabase() {
             try {
-                const docRef = await db.collection("pos_data").doc("pujasera_pusat").get();
-                if (docRef.exists) {
-                    let data = docRef.data();
-                    DB.kiosList = data.kiosList || [];
-                    DB.produkList = data.produkList || [];
-                    DB.riwayatPenjualan = data.riwayatPenjualan || [];
-                    DB.karyawanList = data.karyawanList || [];
-                    DB.settingStruk = data.settingStruk || {};
-                    DB.kartuPelanggan = data.kartuPelanggan || [];
-                    DB.settingPrinter = data.settingPrinter || 'browser';
-                    DB.printerName = data.printerName || '';
-                } else {
-                    DB.kiosList = ["Kios Aneka Bakso", "Kios Minuman Segar"];
-                    DB.produkList = [
-                        { id: "BKS01", nama: "Bakso Urat Spesial", harga: 20000, stok: 40, kios: "Kios Aneka Bakso", kategori: "Makanan", gambar: "" },
-                        { id: "BKS02", nama: "Bakso Telur Asin", harga: 18000, stok: 35, kios: "Kios Aneka Bakso", kategori: "Makanan", gambar: "" },
-                        { id: "MIN01", nama: "Es Teh Manis", harga: 5000, stok: 8, kios: "Kios Minuman Segar", kategori: "Minuman", gambar: "" },
-                        { id: "MIN02", nama: "Es Kopi Susu Aren", harga: 15000, stok: 5, kios: "Kios Minuman Segar", kategori: "Minuman", gambar: "" },
-                        { id: "SNK01", nama: "Kerupuk Kulit", harga: 4000, stok: 20, kios: "Kios Aneka Bakso", kategori: "Snack", gambar: "" }
-                    ];
-                    DB.riwayatPenjualan = [];
-                    DB.kartuPelanggan = [];
-                    DB.settingStruk = { namaToko: "PUJASERA SEJAHTERA", alamat: "Jl. Raya Kuliner No. 123", footer: "Terima Kasih Atas Kunjungan Anda!" };
-                    DB.settingPrinter = 'browser';
-                    DB.printerName = "";
-                    DB.karyawanList = [
-                        { nama: "Admin Pusat", pinHash: hashPIN("123456"), pinAsli: "123456", role: "Owner", kios: "SEMUA KIOS" },
-                        { nama: "Kasir Bakso", pinHash: hashPIN("111111"), pinAsli: "111111", role: "Tenant", kios: "Kios Aneka Bakso" }
-                    ];
-                    await saveDatabase();
-                }
-            } catch (error) {
-                console.error("Gagal terhubung ke Firebase:", error);
-            }
+                db.collection("pos_data").doc("pujasera_pusat").onSnapshot((docRef) => {
+                    if (docRef.exists) {
+                        let data = docRef.data();
+                        DB.kiosList = data.kiosList || [];
+                        DB.produkList = data.produkList || [];
+                        DB.riwayatPenjualan = data.riwayatPenjualan || [];
+                        DB.karyawanList = data.karyawanList || [];
+                        DB.settingStruk = data.settingStruk || {};
+                        DB.kartuPelanggan = data.kartuPelanggan || [];
+                        DB.settingPrinter = data.settingPrinter || 'browser';
+                        DB.printerName = data.printerName || '';
+                    } else {
+                        if (isFirstLoad) {
+                            DB.kiosList = ["Kios Aneka Bakso", "Kios Minuman Segar"];
+                            DB.produkList = [
+                                { id: "BKS01", nama: "Bakso Urat Spesial", harga: 20000, stok: 40, kios: "Kios Aneka Bakso", kategori: "Makanan", gambar: "" },
+                                { id: "MIN01", nama: "Es Teh Manis", harga: 5000, stok: 8, kios: "Kios Minuman Segar", kategori: "Minuman", gambar: "" }
+                            ];
+                            DB.riwayatPenjualan = []; DB.kartuPelanggan = [];
+                            DB.settingStruk = { namaToko: "PUJASERA SEJAHTERA", alamat: "Jl. Raya Kuliner No. 123", footer: "Terima Kasih Atas Kunjungan Anda!" };
+                            DB.settingPrinter = 'browser'; DB.printerName = "";
+                            DB.karyawanList = [
+                                { nama: "Admin Pusat", pinHash: hashPIN("123456"), pinAsli: "123456", role: "Owner", kios: "SEMUA KIOS" },
+                                { nama: "Kasir Bakso", pinHash: hashPIN("111111"), pinAsli: "111111", role: "Tenant", kios: "Kios Aneka Bakso" }
+                            ];
+                            saveDatabase();
+                        }
+                    }
+
+                    if (isFirstLoad) {
+                        isFirstLoad = false;
+                        let savedUser = sessionStorage.getItem('pos_user_aktif');
+                        if (savedUser) {
+                            let tempUser = JSON.parse(savedUser);
+                            // Ambil info terupdate (jika pin diubah di device lain)
+                            let updatedUser = DB.karyawanList.find(u => u.pinHash === tempUser.pinHash);
+                            if(updatedUser) userAktif = updatedUser;
+                            else userAktif = tempUser; 
+
+                            kiosAktifPOS = userAktif.role === 'Owner' ? DB.kiosList[0] : userAktif.kios;
+                            lanjutkanLogin();
+                        }
+                    } else {
+                        // Jika ada perubahan dari perangkat lain, update tampilan menu yang sedang dibuka
+                        if (userAktif) reRenderActiveMenu();
+                    }
+                }, (error) => {
+                    console.error("Gagal mendengarkan Firebase:", error);
+                });
+            } catch (error) { console.error("Gagal inisialisasi Firebase:", error); }
         }
 
         async function saveDatabase() {
             try {
                 await db.collection("pos_data").doc("pujasera_pusat").set({
-                    kiosList: DB.kiosList,
-                    produkList: DB.produkList,
-                    riwayatPenjualan: DB.riwayatPenjualan,
-                    karyawanList: DB.karyawanList,
-                    settingStruk: DB.settingStruk,
-                    kartuPelanggan: DB.kartuPelanggan,
-                    settingPrinter: DB.settingPrinter,
-                    printerName: DB.printerName
+                    kiosList: DB.kiosList, produkList: DB.produkList, riwayatPenjualan: DB.riwayatPenjualan,
+                    karyawanList: DB.karyawanList, settingStruk: DB.settingStruk, kartuPelanggan: DB.kartuPelanggan,
+                    settingPrinter: DB.settingPrinter, printerName: DB.printerName
                 });
-            } catch (error) {
-                console.error("Gagal menyimpan ke Firebase:", error);
-            }
+            } catch (error) { console.error("Gagal menyimpan ke Firebase:", error); }
         }
 
-        let userAktif = null; let kiosAktifPOS = ""; let keranjang = []; 
-        let kategoriAktif = 'Semua'; let currentQueueFilter = 'ALL'; 
-        let isLocked = false; let salahLogCount = 0;
-
-        window.onload = async () => { 
-            await initDatabase(); 
-            
-            // Cek apakah ada sesi aktif di sessionStorage agar aman dari tidak sengaja refresh
-            let savedUser = sessionStorage.getItem('pos_user_aktif');
-            if (savedUser) {
-                userAktif = JSON.parse(savedUser);
-                kiosAktifPOS = userAktif.role === 'Owner' ? DB.kiosList[0] : userAktif.kios;
-                lanjutkanLogin();
-            }
-        };
+        window.onload = async () => { await initDatabase(); };
 
         function actionLogin() {
             if (isLocked) return false;
-            let pinInputEl = document.getElementById('input-pin');
-            let pinInput = pinInputEl.value.trim();
+            let pinInputEl = document.getElementById('input-pin'); let pinInput = pinInputEl.value.trim();
             if(!pinInput) return false;
             
-            let inputHash = hashPIN(pinInput);
-            let user = DB.karyawanList.find(u => u.pinHash === inputHash);
+            let inputHash = hashPIN(pinInput); let user = DB.karyawanList.find(u => u.pinHash === inputHash);
             pinInputEl.value = ''; 
 
             if(user) {
                 salahLogCount = 0; userAktif = user; 
-                sessionStorage.setItem('pos_user_aktif', JSON.stringify(user)); // Simpan sesi
-                kiosAktifPOS = user.role === 'Owner' ? DB.kiosList[0] : user.kios;
-                lanjutkanLogin();
+                sessionStorage.setItem('pos_user_aktif', JSON.stringify(user)); 
+                kiosAktifPOS = user.role === 'Owner' ? DB.kiosList[0] : user.kios; lanjutkanLogin();
             } else {
                 salahLogCount++;
                 if(salahLogCount >= 3) { triggerLockout(); } 
@@ -767,61 +762,62 @@
 
         function lanjutkanLogin() {
             document.getElementById('login-screen').style.display = 'none';
-            document.getElementById('main-header').style.display = 'flex';
-            document.getElementById('main-body').style.display = 'flex';
+            document.getElementById('main-header').style.display = 'flex'; document.getElementById('main-body').style.display = 'flex';
             document.getElementById('active-user-badge').innerText = `${userAktif.nama} (${userAktif.role})`;
-            document.getElementById('header-app-name').innerText = DB.settingStruk.namaToko;
-            document.getElementById('dash-user').innerText = userAktif.nama;
+            document.getElementById('header-app-name').innerText = DB.settingStruk.namaToko; document.getElementById('dash-user').innerText = userAktif.nama;
             document.getElementById('dash-kios-name').innerText = userAktif.role === 'Owner' ? 'Semua Kios (Owner)' : userAktif.kios;
 
             if (userAktif.role === 'Owner') {
-                document.getElementById('menu-owner-only').style.display = 'block';
-                document.querySelectorAll('.menu-owner-restricted').forEach(el => el.style.display = 'flex');
-                document.getElementById('owner-card-list-container').style.display = 'block';
-                document.getElementById('btn-reset-riwayat').style.display = 'inline-flex';
+                document.getElementById('menu-owner-only').style.display = 'block'; document.querySelectorAll('.menu-owner-restricted').forEach(el => el.style.display = 'flex');
+                document.getElementById('owner-card-list-container').style.display = 'block'; document.getElementById('btn-reset-riwayat').style.display = 'inline-flex';
                 document.getElementById('setting-kop-struk').style.display = 'block'; 
             } else {
-                document.getElementById('menu-owner-only').style.display = 'none';
-                document.querySelectorAll('.menu-owner-restricted').forEach(el => el.style.display = 'none');
-                document.getElementById('owner-card-list-container').style.display = 'none';
-                document.getElementById('btn-reset-riwayat').style.display = 'none'; 
+                document.getElementById('menu-owner-only').style.display = 'none'; document.querySelectorAll('.menu-owner-restricted').forEach(el => el.style.display = 'none');
+                document.getElementById('owner-card-list-container').style.display = 'none'; document.getElementById('btn-reset-riwayat').style.display = 'none'; 
                 document.getElementById('setting-kop-struk').style.display = 'none'; 
             }
             buildDropdowns(); muatDataPengaturanUI(); gantiKiosPOS(); switchMenu('dashboard');
             if(DB.settingPrinter === 'bluetooth') autoConnectPrinter();
         }
 
-        function logout() { 
-            sessionStorage.removeItem('pos_user_aktif'); // Hapus sesi saat logout
-            location.reload(); 
-        }
-
+        function logout() { sessionStorage.removeItem('pos_user_aktif'); location.reload(); }
         function toggleSidebar() { document.getElementById('sidebar-menu').classList.toggle('collapsed'); }
 
         function buildDropdowns() {
             let optKios = DB.kiosList.map(k => `<option value="${k}">${k}</option>`).join('');
             let domPos = document.getElementById('pos-kios-selector'); let domLaporan = document.getElementById('sales-kios-filter'); let domOpname = document.getElementById('opname-kios-filter');
             if(userAktif.role === 'Owner') { 
-                domPos.innerHTML = optKios; domPos.disabled = false; 
-                domLaporan.innerHTML = `<option value="ALL">-- SEMUA KIOS --</option>` + optKios; domLaporan.disabled = false;
-                domOpname.innerHTML = optKios; domOpname.disabled = false;
+                domPos.innerHTML = optKios; domPos.disabled = false; domLaporan.innerHTML = `<option value="ALL">-- SEMUA KIOS --</option>` + optKios; domLaporan.disabled = false; domOpname.innerHTML = optKios; domOpname.disabled = false;
             } else { 
-                domPos.innerHTML = `<option value="${userAktif.kios}">${userAktif.kios}</option>`; domPos.disabled = true; 
-                domLaporan.innerHTML = `<option value="${userAktif.kios}">${userAktif.kios}</option>`; domLaporan.disabled = true; 
-                domOpname.innerHTML = `<option value="${userAktif.kios}">${userAktif.kios}</option>`; domOpname.disabled = true;
+                domPos.innerHTML = `<option value="${userAktif.kios}">${userAktif.kios}</option>`; domPos.disabled = true; domLaporan.innerHTML = `<option value="${userAktif.kios}">${userAktif.kios}</option>`; domLaporan.disabled = true; domOpname.innerHTML = `<option value="${userAktif.kios}">${userAktif.kios}</option>`; domOpname.disabled = true;
             }
-            document.getElementById('new-kios').innerHTML = optKios;
-            document.getElementById('k-role-kios').innerHTML = optKios;
+            document.getElementById('new-kios').innerHTML = optKios; document.getElementById('k-role-kios').innerHTML = optKios;
         }
 
         function switchMenu(menuId, el = null) {
             if(userAktif.role !== 'Owner' && (menuId === 'stok' || menuId === 'tenant' || menuId === 'karyawan')) { Swal.fire('Akses Dibatasi', 'Anda tidak memiliki izin mengakses menu ini.', 'warning'); return; }
             document.querySelectorAll('.menu-item').forEach(m => m.classList.remove('active'));
-            if(el) el.classList.add('active');
-            else { let targetEl = Array.from(document.querySelectorAll('.menu-item')).find(m => m.getAttribute('onclick') && m.getAttribute('onclick').includes(menuId)); if(targetEl) targetEl.classList.add('active'); }
+            if(el) el.classList.add('active'); else { let targetEl = Array.from(document.querySelectorAll('.menu-item')).find(m => m.getAttribute('onclick') && m.getAttribute('onclick').includes(menuId)); if(targetEl) targetEl.classList.add('active'); }
             document.querySelectorAll('.dashboard-section').forEach(s => s.classList.remove('active')); document.getElementById('sec-' + menuId).classList.add('active');
-            if(menuId === 'pos') { updateQueueCounters(); } 
-            else { if(menuId === 'dashboard') updateDashboard(); if(menuId === 'stok') renderStok(); if(menuId === 'pembayaran') renderKartu(); if(menuId === 'laporan') renderLaporanPenjualan(); if(menuId === 'tenant') renderKiosManagerList(); if(menuId === 'karyawan') renderKaryawan(); if(menuId === 'opname') renderOpname(); }
+            
+            reRenderActiveMenu(menuId);
+        }
+
+        // FUNGSI BARU: Untuk memperbarui data secara Real-Time tanpa me-reset keranjang
+        function reRenderActiveMenu(menuIdOverride = null) {
+            let menuId = menuIdOverride;
+            if(!menuId) {
+                let activeEl = document.querySelector('.dashboard-section.active');
+                if(activeEl) menuId = activeEl.id.replace('sec-', '');
+            }
+            if(menuId === 'dashboard') updateDashboard();
+            if(menuId === 'pos') { updateQueueCounters(); filterProduk(document.getElementById('input-barcode').value); }
+            if(menuId === 'pembayaran') renderKartu();
+            if(menuId === 'laporan') renderLaporanPenjualan();
+            if(menuId === 'stok') renderStok();
+            if(menuId === 'opname') renderOpname();
+            if(menuId === 'tenant') renderKiosManagerList();
+            if(menuId === 'karyawan') renderKaryawan();
         }
 
         function updateDashboard() {
@@ -1144,10 +1140,55 @@
 
         async function ajustOpname(id, kios) { let val = document.getElementById(`real-stok-${id}`).value; if(val === '') return Swal.fire('Perhatian', 'Masukkan jumlah stok fisik terlebih dahulu.', 'warning'); let numVal = parseInt(val); let p = DB.produkList.find(x => x.id === id && x.kios === kios); if(p) { let diff = numVal - p.stok; p.stok = numVal; await saveDatabase(); renderOpname(); Swal.fire('Audit Berhasil', `Stok diperbarui. Selisih tercatat: ${diff >= 0 ? '+' + diff : diff} pcs.`, 'success'); } }
 
-        function muatDataPengaturanUI() { document.getElementById('setting-struk-nama').value = DB.settingStruk.namaToko; document.getElementById('setting-struk-alamat').value = DB.settingStruk.alamat; document.getElementById('setting-struk-footer').value = DB.settingStruk.footer; document.getElementById('setting-printer-mode').value = DB.settingPrinter; gantiModePrinter(); }
+        function muatDataPengaturanUI() { 
+            // Data pengaturan Struk & Printer
+            document.getElementById('setting-struk-nama').value = DB.settingStruk.namaToko; 
+            document.getElementById('setting-struk-alamat').value = DB.settingStruk.alamat; 
+            document.getElementById('setting-struk-footer').value = DB.settingStruk.footer; 
+            document.getElementById('setting-printer-mode').value = DB.settingPrinter; 
+            gantiModePrinter(); 
+
+            // Data Pengaturan Profil (BARU)
+            if(userAktif) {
+                document.getElementById('profil-nama').value = userAktif.nama;
+                document.getElementById('profil-pin').value = userAktif.pinAsli || "";
+            }
+        }
+        
         async function simpanPengaturanStruk() { DB.settingStruk.namaToko = document.getElementById('setting-struk-nama').value; DB.settingStruk.alamat = document.getElementById('setting-struk-alamat').value; DB.settingStruk.footer = document.getElementById('setting-struk-footer').value; await saveDatabase(); document.getElementById('header-app-name').innerText = DB.settingStruk.namaToko; Swal.fire('Sukses', 'Disimpan!', 'success'); }
         async function gantiModePrinter() { DB.settingPrinter = document.getElementById('setting-printer-mode').value; await saveDatabase(); document.getElementById('printer-help-browser').style.display = DB.settingPrinter === 'browser' ? 'block' : 'none'; document.getElementById('printer-help-rawbt').style.display = DB.settingPrinter === 'rawbt' ? 'block' : 'none'; document.getElementById('printer-help-bluetooth').style.display = DB.settingPrinter === 'bluetooth' ? 'block' : 'none'; }
         function testCetakPrinter() { if(DB.settingPrinter === 'browser') window.print(); else if(DB.settingPrinter === 'bluetooth') generateTeksStrukBluetooth({idNota: 'TEST', kasir: userAktif.nama, waktu: new Date().toLocaleString('id-ID'), items: [{nama: 'TEST PRINTER', qty: 1, harga: 0, catatan: ''}], totalNota: 0, bayar: 0, metode: 'Tunai'}); }
+
+        // FUNGSI BARU: Update Profil (Nama & PIN)
+        async function updateProfil() {
+            let namaBaru = document.getElementById('profil-nama').value.trim();
+            let pinBaru = document.getElementById('profil-pin').value.trim();
+            
+            if(!namaBaru || !pinBaru || pinBaru.length !== 6) {
+                return Swal.fire('Error', 'Nama profil tidak boleh kosong dan PIN harus tepat 6 karakter/angka!', 'warning');
+            }
+            
+            let userIndex = DB.karyawanList.findIndex(u => u.pinHash === userAktif.pinHash);
+            if(userIndex !== -1) {
+                // Update data di Array
+                DB.karyawanList[userIndex].nama = namaBaru;
+                DB.karyawanList[userIndex].pinAsli = pinBaru;
+                DB.karyawanList[userIndex].pinHash = hashPIN(pinBaru);
+                
+                // Update userAktif saat ini dan Sesi
+                userAktif = DB.karyawanList[userIndex];
+                sessionStorage.setItem('pos_user_aktif', JSON.stringify(userAktif));
+                
+                // Simpan ke Firebase Database
+                await saveDatabase();
+                
+                // Perbarui tampilan Nama di Layar (Header & Dashboard)
+                document.getElementById('active-user-badge').innerText = `${userAktif.nama} (${userAktif.role})`;
+                document.getElementById('dash-user').innerText = userAktif.nama;
+                
+                Swal.fire('Sukses', 'Profil dan PIN berhasil diperbarui!', 'success');
+            }
+        }
 
         function renderKaryawan() { 
             let tbody = document.querySelector('#karyawan-table tbody'); let htmlTemp = '';
