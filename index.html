@@ -179,12 +179,16 @@
         </div>
     </div>
 
+    
     <!-- 2. HEADER -->
     <header id="main-header" style="display:none;">
         <div style="display: flex; align-items: center; gap: 15px;">
             <button class="btn-toggle-menu" onclick="toggleSidebar()"><i class="fas fa-bars"></i></button>
             <b style="font-size: 16px; color: white; display: flex; align-items: center; gap: 10px;">
-                <div style="background: var(--warning); color: var(--primary); width: 28px; height: 28px; display: flex; justify-content: center; align-items: center; border-radius: 6px;"><i class="fas fa-store"></i></div>
+                <!-- Logo dari Github -->
+                <div style="width: 28px; height: 28px; display: flex; justify-content: center; align-items: center; border-radius: 6px; overflow: hidden; background: white;">
+                    <img src="https://raw.githubusercontent.com/jeje-dot/Kasir-kantin-dev/main/icon_mesin_kasir_512x512.png" alt="Logo Kios" style="width: 100%; height: 100%; object-fit: contain;">
+                </div>
                 <span id="header-app-name">POS KUSNADI</span>
             </b>
         </div>
@@ -609,7 +613,7 @@
         let btCharacteristic = null;
         let deferredPrompt = null;
 
-        // Auto-generate manifest dynamic supaya tombol Install PWA muncul di browser modern
+                // Auto-generate manifest dynamic supaya tombol Install PWA muncul di browser modern
         window.addEventListener('DOMContentLoaded', () => {
             const manifestData = {
                 name: "POS Pujasera Enterprise",
@@ -619,12 +623,14 @@
                 background_color: "#0f172a",
                 theme_color: "#0f172a",
                 icons: [
-                    { src: "https://cdn-icons-png.flaticon.com/512/2897/2897785.png", sizes: "512x512", type: "image/png" }
+                    // Ikon saat aplikasi di-install dari Github
+                    { src: "https://raw.githubusercontent.com/jeje-dot/Kasir-kantin-dev/main/icon_mesin_kasir_512x512.png", sizes: "512x512", type: "image/png" }
                 ]
             };
             const stringBlob = new Blob([JSON.stringify(manifestData)], { type: 'application/json' });
             document.getElementById('dynamic-manifest').setAttribute('href', URL.createObjectURL(stringBlob));
         });
+
 
         window.addEventListener('beforeinstallprompt', (e) => {
             e.preventDefault();
