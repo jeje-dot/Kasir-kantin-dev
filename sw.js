@@ -1,4 +1,4 @@
-const CACHE_NAME = 'kasir-kantin-v1';
+const CACHE_NAME = 'kasir-kantin-v2';
 const urlsToCache = [
   '/Kasir-kantin-dev/',
   '/Kasir-kantin-dev/index.html',
