@@ -611,20 +611,26 @@
 
         // Auto-generate manifest dynamic supaya tombol Install PWA muncul di browser modern
         window.addEventListener('DOMContentLoaded', () => {
-            const manifestData = {
-                name: "POS Pujasera Enterprise",
-                short_name: "POS Pujasera",
-                start_url: window.location.href,
-                display: "standalone",
-                background_color: "#0f172a",
-                theme_color: "#0f172a",
-                icons: [
-                    { src: "https://cdn-icons-png.flaticon.com/512/2897/2897785.png", sizes: "512x512", type: "image/png" }
-                ]
-            };
-            const stringBlob = new Blob([JSON.stringify(manifestData)], { type: 'application/json' });
-            document.getElementById('dynamic-manifest').setAttribute('href', URL.createObjectURL(stringBlob));
-        });
+    const manifestData = {
+        name: "POS Pujasera Enterprise",
+        short_name: "POS Pujasera",
+        start_url: window.location.href,
+        display: "standalone",
+        background_color: "#0f172a",
+        theme_color: "#0f172a",
+        icons: [
+            { 
+                // URL gambar diubah di sini
+                src: "[attachment_0](attachment)", 
+                sizes: "512x512", 
+                type: "image/png" 
+            }
+        ]
+    };
+    const stringBlob = new Blob([JSON.stringify(manifestData)], { type: 'application/json' });
+    document.getElementById('dynamic-manifest').setAttribute('href', URL.createObjectURL(stringBlob));
+});
+
 
         window.addEventListener('beforeinstallprompt', (e) => {
             e.preventDefault();
