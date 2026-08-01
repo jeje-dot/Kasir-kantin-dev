@@ -80,7 +80,6 @@
         .pos-layout { display: flex; gap: 12px; height: 100%; width: 100%; overflow: hidden; }
         .pos-products { flex: 1; display: flex; flex-direction: column; background: var(--card-bg); border-radius: 14px; padding: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.02); border: 1px solid var(--border); min-width: 0; height: 100%; overflow: hidden; }
         
-        /* DIUBAH: .pos-cart menjadi block dan overflow-y: auto agar seluruh panel kanan bisa di-scroll ke bawah */
         .pos-cart { width: 340px; background: white; padding: 15px; border-radius: 14px; border: 1px solid var(--border); box-shadow: 0 4px 10px rgba(0,0,0,0.05); flex-shrink: 0; display: block; overflow-y: auto; height: 100%; }
         
         .search-bar { flex: 1; position: relative; }
@@ -103,7 +102,6 @@
         .product-img img { width: 100%; height: 100%; object-fit: cover; }
         .product-price { color: var(--danger); font-weight: 800; font-size: 13px; margin-top: 4px; }
 
-        /* DIUBAH: .cart-wrapper tidak lagi memaksa flex: 1, sehingga bisa melar ke bawah */
         .cart-wrapper { padding: 8px; background: var(--light); border: 1px solid var(--border); border-radius: 10px; margin-bottom: 15px; min-height: 120px; }
         .cart-item { background: var(--card-bg); border: 1px solid var(--border); border-radius: 8px; padding: 10px; margin-bottom: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.02); }
         .btn-checkout { width: 100%; background: var(--success); color: white; border: none; padding: 12px; border-radius: 8px; font-size: 14px; font-weight: 800; cursor: pointer; display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; transition: 0.2s; }
@@ -276,7 +274,6 @@
                     </div>
                 </div>
 
-                <!-- PANEL BARU: INFO PESANAN DIPROSES & SELESAI -->
                 <div style="margin-top: 15px; background: var(--card-bg); padding: 18px; border-radius: 12px; border: 1px solid var(--border);">
                     <h4 style="margin-bottom: 12px; color: var(--text-muted); text-transform: uppercase; font-size: 11px; font-weight: 800;">Status Pesanan Hari Ini</h4>
                     <div style="display: flex; gap: 15px; flex-wrap: wrap;">
@@ -344,7 +341,12 @@
                     <div class="pos-cart">
                         <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
                             <h3 style="margin:0; color:var(--primary); font-size: 16px;"><i class="fas fa-shopping-cart" style="color: var(--accent);"></i> Keranjang</h3>
-                            <div style="background: var(--accent); color: white; padding: 2px 10px; border-radius: 20px; font-size: 11px; font-weight: bold;"><span id="cart-count">0</span> Item</div>
+                            <div style="display: flex; gap: 8px; align-items: center;">
+                                <button class="btn-action btn-outline" style="padding: 2px 8px; font-size: 10px; color: var(--danger); border-color: var(--danger);" onclick="kosongkanKeranjang()">
+                                    <i class="fas fa-trash"></i> Batal
+                                </button>
+                                <div style="background: var(--accent); color: white; padding: 2px 10px; border-radius: 20px; font-size: 11px; font-weight: bold;"><span id="cart-count">0</span> Item</div>
+                            </div>
                         </div>
                         
                         <div style="margin-bottom: 8px;">
@@ -355,7 +357,7 @@
                             <input type="text" id="nomor-meja" class="form-control" placeholder="Nomor Meja / Nama Pemesan" style="font-size: 12px; text-align: center; background: var(--light);">
                         </div>
 
-                        <!-- PANEL KERANJANG - Kini akan melar ke bawah dan mendorong area pembayaran ke bawah -->
+                        <!-- PANEL KERANJANG -->
                         <div class="cart-wrapper" id="cart-items-container"></div>
 
                         <div style="border-top:2px dashed var(--border); padding-top:10px;">
@@ -371,6 +373,7 @@
                                 <button class="btn-action btn-outline" style="flex: 1; font-size: 10px; padding: 6px; justify-content: center;" onclick="tambahUang(20000)">+20k</button>
                                 <button class="btn-action btn-outline" style="flex: 1; font-size: 10px; padding: 6px; justify-content: center;" onclick="tambahUang(50000)">+50k</button>
                                 <button class="btn-action btn-outline" style="flex: 1; font-size: 10px; padding: 6px; justify-content: center;" onclick="tambahUang(100000)">+100k</button>
+                                <button class="btn-action btn-outline" style="flex: 0.8; font-size: 12px; padding: 6px; justify-content: center; border-color: var(--danger); color: var(--danger);" onclick="clearUang()"><i class="fas fa-backspace"></i></button>
                             </div>
 
                             <button class="btn-checkout" onclick="prosesPembayaranTunai()">
@@ -475,7 +478,13 @@
                             <option value="Minuman">Minuman</option>
                             <option value="Snack">Snack</option>
                         </select>
-                        <input type="text" id="new-img-url" class="form-control" placeholder="URL Gambar" style="flex: 1.2; min-width: 120px;">
+                        
+                        <!-- FITUR BARU: TOMBOL UPLOAD GAMBAR LOKAL -->
+                        <div style="flex: 1.2; min-width: 120px; display: flex; align-items: center; background: white; border: 1px solid var(--border); border-radius: 8px; padding: 0 8px;">
+                            <i class="fas fa-image" style="color: var(--text-muted); margin-right: 5px;"></i>
+                            <input type="file" id="new-img-file" accept="image/png, image/jpeg, image/jpg" style="width: 100%; font-size: 11px; padding: 8px 0; outline: none; background: transparent; border: none; cursor: pointer;">
+                        </div>
+
                         <input type="number" id="new-price" class="form-control" placeholder="Harga" style="flex: 1; min-width: 80px;">
                         <input type="number" id="new-stock" class="form-control" placeholder="Stok" style="flex: 0.8; min-width: 60px;">
                         <select id="new-kios" class="form-control" style="flex: 1.2; min-width: 120px;"></select>
@@ -661,11 +670,12 @@
             document.getElementById('dynamic-manifest').setAttribute('href', URL.createObjectURL(stringBlob));
         });
 
-        window.addEventListener('beforeinstallprompt', (e) => {
-            e.preventDefault();
-            deferredPrompt = e;
-            let installBtn = document.getElementById('btn-install-pwa');
-            if(installBtn) installBtn.style.display = 'flex';
+        window.addEventListener('beforeunload', function (e) {
+            if (keranjang && keranjang.length > 0) {
+                var confirmationMessage = 'Anda masih memiliki pesanan di keranjang yang belum dibayar. Yakin ingin keluar?';
+                e.returnValue = confirmationMessage;
+                return confirmationMessage;
+            }
         });
 
         async function installPWA() {
@@ -796,7 +806,7 @@
                 document.getElementById('menu-owner-only').style.display = 'block'; document.querySelectorAll('.menu-owner-restricted').forEach(el => el.style.display = 'flex');
                 document.getElementById('owner-card-list-container').style.display = 'block'; document.getElementById('btn-reset-riwayat').style.display = 'inline-flex';
                 document.getElementById('setting-kop-struk').style.display = 'block'; 
-                document.getElementById('setting-profil-akun').style.display = 'block'; // Profil hanya untuk Owner
+                document.getElementById('setting-profil-akun').style.display = 'block'; 
             } else {
                 document.getElementById('menu-owner-only').style.display = 'none'; document.querySelectorAll('.menu-owner-restricted').forEach(el => el.style.display = 'none');
                 document.getElementById('owner-card-list-container').style.display = 'none'; document.getElementById('btn-reset-riwayat').style.display = 'none'; 
@@ -859,7 +869,6 @@
                         todayOmzet += r.totalNota; todayTrx++; 
                         r.items.forEach(i => { if(userAktif.role === 'Owner' || i.kios === userAktif.kios) { if(!itemCounter[i.nama]) itemCounter[i.nama] = 0; itemCounter[i.nama] += i.qty; } });
                         
-                        // Buat daftar pesanan untuk panel informasi di dashboard
                         let itemStr = r.items.map(i => `${i.nama}(${i.qty})`).join(', ');
                         let cardHTML = `
                             <div style="padding: 10px; border-bottom: 1px dashed var(--border); font-size: 11px;">
@@ -879,13 +888,11 @@
             
             document.getElementById('dash-omzet').innerText = `Rp ${todayOmzet.toLocaleString('id-ID')}`; document.getElementById('dash-trx').innerText = todayTrx;
             
-            // Render list top items
             let sortedItems = Object.keys(itemCounter).sort((a,b) => itemCounter[b] - itemCounter[a]).slice(0, 5);
             let tbody = document.querySelector('#dash-top-items tbody'); let htmlTemp = '';
             if(sortedItems.length === 0) htmlTemp = '<tr><td colspan="2" style="text-align:center; color:gray;">Belum ada penjualan hari ini</td></tr>';
             sortedItems.forEach(nama => { htmlTemp += `<tr><td><i class="fas fa-fire" style="color:var(--danger); margin-right:5px;"></i> ${nama}</td><td><b>${itemCounter[nama]}</b> porsi</td></tr>`; }); tbody.innerHTML = htmlTemp;
 
-            // Update Panel Order di Dashboard
             document.getElementById('dash-badge-proses').innerText = countProses;
             document.getElementById('dash-badge-selesai').innerText = countSelesai;
             document.getElementById('dash-order-proses').innerHTML = listProses || '<div style="text-align:center; color:gray; padding:15px 10px; font-size:12px;">Tidak ada pesanan</div>';
@@ -918,7 +925,7 @@
             currentQueueFilter = 'ALL'; highlightQueueFilterCard('ALL'); filterProduk(document.getElementById('input-barcode').value);
         }
 
-        function gantiKiosPOS() { kiosAktifPOS = document.getElementById('pos-kios-selector').value; keranjang = []; renderKeranjang(); filterProduk(''); updateQueueCounters(); }
+        function gantiKiosPOS() { kiosAktifPOS = document.getElementById('pos-kios-selector').value; keranjang = []; renderKeranjang(); filterProduk(''); updateQueueCounters(); document.getElementById('input-bayar').value = ''; }
         function setQueueFilter(status) { currentQueueFilter = status; highlightQueueFilterCard(status); renderQueueOrProductsContainer(); }
         function highlightQueueFilterCard(status) { ['ALL', 'Proses', 'Selesai'].forEach(s => { let card = document.getElementById('qfilter-' + s.toLowerCase()); if(card) card.classList.remove('active-filter'); }); let activeCard = document.getElementById('qfilter-' + status.toLowerCase()); if(activeCard) activeCard.classList.add('active-filter'); }
 
@@ -987,7 +994,35 @@
             renderKeranjang();
         }
 
-        function ubahQty(id, delta) { let item = keranjang.find(k => k.id === id); let p = DB.produkList.find(x => x.id === id && x.kios === kiosAktifPOS); if(item && p) { let newQty = item.qty + delta; if(newQty > p.stok) { if(typeof Swal !== 'undefined') Swal.fire('Limit', 'Melebihi stok.', 'warning'); item.qty = p.stok; } else if(newQty <= 0) keranjang = keranjang.filter(k => k.id !== id); else item.qty = newQty; renderKeranjang(); } }
+        function hapusItemKeranjang(id) {
+            keranjang = keranjang.filter(k => k.id !== id);
+            renderKeranjang();
+        }
+
+        function kosongkanKeranjang() {
+            if (keranjang.length === 0) return;
+            Swal.fire({
+                title: 'Batalkan Semua Pesanan?',
+                text: 'Keranjang akan dikosongkan.',
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonColor: '#ef4444',
+                cancelButtonColor: '#94a3b8',
+                confirmButtonText: 'Ya, Kosongkan!'
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    keranjang = [];
+                    document.getElementById('input-bayar').value = '';
+                    renderKeranjang();
+                }
+            });
+        }
+
+        function clearUang() {
+            document.getElementById('input-bayar').value = '';
+        }
+
+        function ubahQty(id, delta) { let item = keranjang.find(k => k.id === id); let p = DB.produkList.find(x => x.id === id && x.kios === kiosAktifPOS); if(item && p) { let newQty = item.qty + delta; if(newQty > p.stok) { if(typeof Swal !== 'undefined') Swal.fire('Limit', 'Melebihi stok.', 'warning'); item.qty = p.stok; } else if(newQty <= 0) hapusItemKeranjang(id); else item.qty = newQty; renderKeranjang(); } }
         function updateCatatan(id, val) { let item = keranjang.find(k => k.id === id); if(item) item.catatan = val; }
 
         function renderKeranjang() {
@@ -1003,6 +1038,7 @@
                             <input type="text" placeholder="Catatan..." value="${item.catatan}" oninput="updateCatatan('${item.id}', this.value)" style="width: 100%; border: 1px solid var(--border); border-radius: 4px; padding: 4px; font-size: 10px; margin-top: 4px; outline:none;">
                             <div class="qty-box" style="justify-content: space-between;">
                                 <div style="display: flex; align-items: center; gap: 4px;">
+                                    <button class="qty-btn" style="color:var(--danger); border-color:var(--danger);" onclick="hapusItemKeranjang('${item.id}')"><i class="fas fa-trash"></i></button>
                                     <button class="qty-btn" onclick="ubahQty('${item.id}', -1)">-</button>
                                     <span style="font-weight: 800; width: 20px; text-align: center; font-size: 12px;">${item.qty}</span>
                                     <button class="qty-btn" onclick="ubahQty('${item.id}', 1)">+</button>
@@ -1168,14 +1204,70 @@
             tbody.innerHTML = htmlTemp;
         }
         
+        // FITUR BARU: HELPER UNTUK KONVERSI & KOMPRESI GAMBAR KE BASE64
+        function prosesGambarKeBase64(file) {
+            return new Promise((resolve, reject) => {
+                let reader = new FileReader();
+                reader.readAsDataURL(file);
+                reader.onload = function(event) {
+                    let img = new Image();
+                    img.src = event.target.result;
+                    img.onload = function() {
+                        // Maksimal lebar/tinggi thumbnail 300px agar tidak membebani limit 1MB Firestore
+                        let MAX_WIDTH = 300; let MAX_HEIGHT = 300;
+                        let width = img.width; let height = img.height;
+                        if (width > height) { if (width > MAX_WIDTH) { height *= MAX_WIDTH / width; width = MAX_WIDTH; } } 
+                        else { if (height > MAX_HEIGHT) { width *= MAX_HEIGHT / height; height = MAX_HEIGHT; } }
+                        
+                        let canvas = document.createElement("canvas");
+                        canvas.width = width; canvas.height = height;
+                        let ctx = canvas.getContext("2d");
+                        ctx.drawImage(img, 0, 0, width, height);
+                        
+                        // Konversi ke Base64 dengan kompresi JPG 70%
+                        let dataUrl = canvas.toDataURL("image/jpeg", 0.7);
+                        resolve(dataUrl);
+                    }
+                    img.onerror = function() { resolve(""); }
+                };
+                reader.onerror = function() { resolve(""); };
+            });
+        }
+
         async function tambahBarang() {
-            let id = document.getElementById('new-barcode').value.trim(); let nama = document.getElementById('new-name').value.trim(); let kategori = document.getElementById('new-kategori').value; let gambar = document.getElementById('new-img-url').value.trim();
-            let harga = parseInt(document.getElementById('new-price').value || 0); let stok = parseInt(document.getElementById('new-stock').value || 0); let kios = document.getElementById('new-kios').value;
+            let id = document.getElementById('new-barcode').value.trim(); 
+            let nama = document.getElementById('new-name').value.trim(); 
+            let kategori = document.getElementById('new-kategori').value; 
+            
+            let harga = parseInt(document.getElementById('new-price').value || 0); 
+            let stok = parseInt(document.getElementById('new-stock').value || 0); 
+            let kios = document.getElementById('new-kios').value;
+            
+            // Mengambil file dari input
+            let fileInput = document.getElementById('new-img-file');
+            let file = fileInput.files[0];
+
             if(!id || !nama || harga <= 0) return Swal.fire('Peringatan', 'Lengkapi form dengan benar!', 'warning');
             if(DB.produkList.some(p => p.id === id && p.kios === kios)) return Swal.fire('Error', 'ID Menu sudah terpakai di kios ini!', 'error');
-            DB.produkList.push({ id, nama, harga, stok, kios, kategori, gambar }); await saveDatabase(); renderStok();
-            document.getElementById('new-barcode').value=''; document.getElementById('new-name').value=''; document.getElementById('new-img-url').value=''; Swal.fire('Sukses', 'Menu berhasil ditambahkan', 'success');
+
+            Swal.fire({ title: 'Menyimpan...', text: 'Memproses data dan gambar', allowOutsideClick: false, didOpen: () => { Swal.showLoading() } });
+
+            let gambarBase64 = "";
+            if (file) {
+                // Proses kompresi gambar agar database Firebase tidak cepat penuh
+                gambarBase64 = await prosesGambarKeBase64(file);
+            }
+
+            DB.produkList.push({ id, nama, harga, stok, kios, kategori, gambar: gambarBase64 }); 
+            await saveDatabase(); 
+            renderStok();
+            
+            document.getElementById('new-barcode').value=''; 
+            document.getElementById('new-name').value=''; 
+            fileInput.value = ''; // Mengosongkan file input kembali
+            Swal.fire('Sukses', 'Menu berhasil ditambahkan', 'success');
         }
+
         async function hapusBarang(id, kios) { DB.produkList = DB.produkList.filter(p => !(p.id === id && p.kios === kios)); await saveDatabase(); renderStok(); }
         async function updateStokCepat(id, kios, val) { let p = DB.produkList.find(x => x.id === id && x.kios === kios); if(p) { p.stok = parseInt(val||0); await saveDatabase(); } }
 
@@ -1201,7 +1293,6 @@
             document.getElementById('setting-printer-mode').value = DB.settingPrinter; 
             gantiModePrinter(); 
 
-            // Jika Owner yang login, muat dropdown list karyawan
             if(userAktif && userAktif.role === 'Owner') {
                 let userSelect = document.getElementById('profil-user-select');
                 if(userSelect) {
@@ -1211,7 +1302,6 @@
             }
         }
         
-        // FUNGSI BARU: Load data profil saat dropdown dipilih
         function loadProfilTerpilih() {
             let idx = document.getElementById('profil-user-select').value;
             let targetUser = DB.karyawanList[idx];
@@ -1221,7 +1311,6 @@
             }
         }
 
-        // FUNGSI BARU: Simpan update profil untuk Karyawan terpilih
         async function updateProfilKaryawan() {
             let idx = document.getElementById('profil-user-select').value;
             let namaBaru = document.getElementById('profil-nama').value.trim();
@@ -1237,7 +1326,6 @@
                 targetUser.pinAsli = pinBaru;
                 targetUser.pinHash = hashPIN(pinBaru);
                 
-                // Jika Owner mengedit akunnya sendiri, update tampilan header & simpan sesi baru
                 if(targetUser.pinHash === userAktif.pinHash) {
                     userAktif = targetUser;
                     sessionStorage.setItem('pos_user_aktif', JSON.stringify(userAktif));
@@ -1247,7 +1335,6 @@
                 
                 await saveDatabase();
                 Swal.fire('Sukses', 'Profil berhasil diperbarui!', 'success');
-                // Refresh list karyawan di tabel
                 if(document.getElementById('sec-karyawan').classList.contains('active')) renderKaryawan();
             }
         }
