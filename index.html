@@ -524,7 +524,6 @@
                 </div>
                 <div style="background: var(--card-bg); padding: 18px; border-radius: 12px; border: 1px solid var(--border); overflow-x: auto;">
                     <table id="karyawan-table">
-                        <!-- Update Header untuk menampilkan kolom PIN Rahasia -->
                         <thead><tr><th>Nama Pengguna</th><th>Role</th><th>Akses Kios</th><th>PIN Karyawan</th><th>Aksi</th></tr></thead>
                         <tbody></tbody>
                     </table>
@@ -575,7 +574,33 @@
         </main>
     </div>
 
-    <!-- JAVASCRIPT LOGIC -->
+    <!-- FIREBASE SDK (DIMASUKKAN SEBELUM LOGIKA UTAMA APLIKASI) -->
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
+
+    <script>
+      // 1. KONFIGURASI FIREBASE ANDA
+      const firebaseConfig = {
+        apiKey: "AIzaSyDSJbIrL7D5N3KnE8mzwi6pxusG3l27ack",
+        authDomain: "kasir-kantin50.firebaseapp.com",
+        projectId: "kasir-kantin50",
+        storageBucket: "kasir-kantin50.firebasestorage.app",
+        messagingSenderId: "506660527827",
+        appId: "1:506660527827:web:c554e2b19a100a7d3c3e26",
+        measurementId: "G-P27Q0TM517"
+      };
+
+      // 2. INISIALISASI FIREBASE & FIRESTORE
+      firebase.initializeApp(firebaseConfig);
+      const db = firebase.firestore();
+
+      // 3. AKTIFKAN MODE OFFLINE (KHUSUS PWA)
+      db.enablePersistence().catch((err) => {
+          console.error("Gagal mengaktifkan mode offline:", err);
+      });
+    </script>
+
+    <!-- JAVASCRIPT LOGIC UTAMA (DIPERBARUI UNTUK FIREBASE) -->
     <script>
         let btDevice = null; 
         let btCharacteristic = null;
@@ -586,49 +611,83 @@
 
         let DB = { kiosList: [], produkList: [], riwayatPenjualan: [], karyawanList: [], settingStruk: {}, kartuPelanggan: [], settingPrinter: 'browser', printerName: '' };
 
-        function initDatabase() {
-            DB.kiosList = JSON.parse(localStorage.getItem('kios_list')) || ["Kios Aneka Bakso", "Kios Minuman Segar"];
-            DB.produkList = JSON.parse(localStorage.getItem('produk_multikios')) || [
-                { id: "BKS01", nama: "Bakso Urat Spesial", harga: 20000, stok: 40, kios: "Kios Aneka Bakso", kategori: "Makanan", gambar: "" },
-                { id: "BKS02", nama: "Bakso Telur Asin", harga: 18000, stok: 35, kios: "Kios Aneka Bakso", kategori: "Makanan", gambar: "" },
-                { id: "MIN01", nama: "Es Teh Manis", harga: 5000, stok: 8, kios: "Kios Minuman Segar", kategori: "Minuman", gambar: "" },
-                { id: "MIN02", nama: "Es Kopi Susu Aren", harga: 15000, stok: 5, kios: "Kios Minuman Segar", kategori: "Minuman", gambar: "" },
-                { id: "SNK01", nama: "Kerupuk Kulit", harga: 4000, stok: 20, kios: "Kios Aneka Bakso", kategori: "Snack", gambar: "" }
-            ];
-            DB.riwayatPenjualan = JSON.parse(localStorage.getItem('riwayat_multikios')) || [];
-            DB.kartuPelanggan = JSON.parse(localStorage.getItem('kartu_pelanggan')) || [];
-            DB.settingStruk = JSON.parse(localStorage.getItem('setting_struk')) || { namaToko: "PUJASERA SEJAHTERA", alamat: "Jl. Raya Kuliner No. 123", footer: "Terima Kasih Atas Kunjungan Anda!" };
-            DB.settingPrinter = localStorage.getItem('setting_printer') || 'browser';
-            DB.printerName = localStorage.getItem('printer_name') || "";
+        async function initDatabase() {
+            try {
+                // Mencoba mengambil data dari Firebase terlebih dahulu
+                const docRef = await db.collection("pos_data").doc("pujasera_pusat").get();
+                
+                if (docRef.exists) {
+                    // JIKA DATA FIREBASE ADA: Gunakan data dari cloud
+                    let data = docRef.data();
+                    DB.kiosList = data.kiosList || [];
+                    DB.produkList = data.produkList || [];
+                    DB.riwayatPenjualan = data.riwayatPenjualan || [];
+                    DB.karyawanList = data.karyawanList || [];
+                    DB.settingStruk = data.settingStruk || {};
+                    DB.kartuPelanggan = data.kartuPelanggan || [];
+                    DB.settingPrinter = data.settingPrinter || 'browser';
+                    DB.printerName = data.printerName || '';
+                } else {
+                    // JIKA FIREBASE KOSONG: Auto-Migrasi data dari LocalStorage lama ke Firebase
+                    console.log("Melakukan migrasi data dari LocalStorage ke Firebase...");
+                    DB.kiosList = JSON.parse(localStorage.getItem('kios_list')) || ["Kios Aneka Bakso", "Kios Minuman Segar"];
+                    DB.produkList = JSON.parse(localStorage.getItem('produk_multikios')) || [
+                        { id: "BKS01", nama: "Bakso Urat Spesial", harga: 20000, stok: 40, kios: "Kios Aneka Bakso", kategori: "Makanan", gambar: "" },
+                        { id: "BKS02", nama: "Bakso Telur Asin", harga: 18000, stok: 35, kios: "Kios Aneka Bakso", kategori: "Makanan", gambar: "" },
+                        { id: "MIN01", nama: "Es Teh Manis", harga: 5000, stok: 8, kios: "Kios Minuman Segar", kategori: "Minuman", gambar: "" },
+                        { id: "MIN02", nama: "Es Kopi Susu Aren", harga: 15000, stok: 5, kios: "Kios Minuman Segar", kategori: "Minuman", gambar: "" },
+                        { id: "SNK01", nama: "Kerupuk Kulit", harga: 4000, stok: 20, kios: "Kios Aneka Bakso", kategori: "Snack", gambar: "" }
+                    ];
+                    DB.riwayatPenjualan = JSON.parse(localStorage.getItem('riwayat_multikios')) || [];
+                    DB.kartuPelanggan = JSON.parse(localStorage.getItem('kartu_pelanggan')) || [];
+                    DB.settingStruk = JSON.parse(localStorage.getItem('setting_struk')) || { namaToko: "PUJASERA SEJAHTERA", alamat: "Jl. Raya Kuliner No. 123", footer: "Terima Kasih Atas Kunjungan Anda!" };
+                    DB.settingPrinter = localStorage.getItem('setting_printer') || 'browser';
+                    DB.printerName = localStorage.getItem('printer_name') || "";
 
-            // MENGGUNAKAN KEY BARU "karyawan_v2" UNTUK ME-RESET DATA LOGIN LAMA YANG ERROR
-            DB.karyawanList = JSON.parse(localStorage.getItem('karyawan_v2'));
-            if(!DB.karyawanList || DB.karyawanList.length === 0) {
-                DB.karyawanList = [
-                    // Menyimpan pinAsli agar owner bisa membacanya di menu karyawan
-                    { nama: "Admin Pusat", pinHash: hashPIN("123456"), pinAsli: "123456", role: "Owner", kios: "SEMUA KIOS" },
-                    { nama: "Kasir Bakso", pinHash: hashPIN("111111"), pinAsli: "111111", role: "Tenant", kios: "Kios Aneka Bakso" }
-                ];
+                    DB.karyawanList = JSON.parse(localStorage.getItem('karyawan_v2'));
+                    if(!DB.karyawanList || DB.karyawanList.length === 0) {
+                        DB.karyawanList = [
+                            { nama: "Admin Pusat", pinHash: hashPIN("123456"), pinAsli: "123456", role: "Owner", kios: "SEMUA KIOS" },
+                            { nama: "Kasir Bakso", pinHash: hashPIN("111111"), pinAsli: "111111", role: "Tenant", kios: "Kios Aneka Bakso" }
+                        ];
+                    }
+                    
+                    // Simpan hasil migrasi ke Firebase agar tersimpan di cloud
+                    await saveDatabase();
+                }
+            } catch (error) {
+                console.error("Gagal terhubung ke Firebase:", error);
+                if(typeof Swal !== 'undefined') Swal.fire('Koneksi Error', 'Gagal memuat database. Periksa koneksi internet Anda.', 'error');
             }
-            saveDatabase();
         }
 
-        function saveDatabase() {
-            localStorage.setItem('kios_list', JSON.stringify(DB.kiosList));
-            localStorage.setItem('produk_multikios', JSON.stringify(DB.produkList));
-            localStorage.setItem('riwayat_multikios', JSON.stringify(DB.riwayatPenjualan));
-            localStorage.setItem('karyawan_v2', JSON.stringify(DB.karyawanList)); // Simpan ke key baru
-            localStorage.setItem('setting_struk', JSON.stringify(DB.settingStruk));
-            localStorage.setItem('kartu_pelanggan', JSON.stringify(DB.kartuPelanggan));
-            localStorage.setItem('setting_printer', DB.settingPrinter);
-            localStorage.setItem('printer_name', DB.printerName || "");
+        async function saveDatabase() {
+            try {
+                // Mengirim semua object DB ke document "pujasera_pusat" di collection "pos_data"
+                await db.collection("pos_data").doc("pujasera_pusat").set({
+                    kiosList: DB.kiosList,
+                    produkList: DB.produkList,
+                    riwayatPenjualan: DB.riwayatPenjualan,
+                    karyawanList: DB.karyawanList,
+                    settingStruk: DB.settingStruk,
+                    kartuPelanggan: DB.kartuPelanggan,
+                    settingPrinter: DB.settingPrinter,
+                    printerName: DB.printerName
+                });
+            } catch (error) {
+                console.error("Gagal menyimpan ke Firebase:", error);
+                if(typeof Swal !== 'undefined') Swal.fire('Error Penyimpanan', 'Data gagal disinkronkan ke Cloud.', 'error');
+            }
         }
 
         let userAktif = null; let kiosAktifPOS = ""; let keranjang = []; 
         let kategoriAktif = 'Semua'; let currentQueueFilter = 'ALL'; 
         let isLocked = false; let salahLogCount = 0;
 
-        window.onload = () => { initDatabase(); };
+        // Mengubah window.onload menjadi async agar menunggu Firebase dimuat
+        window.onload = async () => { 
+            await initDatabase(); 
+        };
 
         function actionLogin() {
             if (isLocked) return false;
@@ -743,10 +802,10 @@
         function downloadCSV(dataArray, filename) { let csvContent = "data:text/csv;charset=utf-8,"; dataArray.forEach(row => { csvContent += row.join(",") + "\r\n"; }); let link = document.createElement("a"); link.setAttribute("href", encodeURI(csvContent)); link.setAttribute("download", filename); document.body.appendChild(link); link.click(); document.body.removeChild(link); }
         function downloadTemplateCSV(type) { if(type === 'stok') downloadCSV([["ID_Menu", "Nama_Menu", "Nama_Kios", "Harga_Jual", "Stok_Awal", "Kategori", "URL_Gambar"], ["MIE01", "Mie Ayam Spesial", "Kios Aneka Bakso", "20000", "50", "Makanan", "https://example.com/gambar.jpg"]], "Template_Stok_Menu.csv"); if(type === 'kios') downloadCSV([["Nama_Kios"], ["Kios Ayam Geprek"]], "Template_Data_Kios.csv"); if(type === 'karyawan') downloadCSV([["Nama_Karyawan", "PIN_Angka", "Nama_Kios_Akses"], ["Budi Santoso", "123123", "Kios Ayam Geprek"]], "Template_Karyawan.csv"); }
 
-        function importCSV(event, type) {
+        async function importCSV(event, type) {
             let file = event.target.files[0]; if(!file) return;
             let reader = new FileReader();
-            reader.onload = (e) => {
+            reader.onload = async (e) => {
                 let lines = e.target.result.split('\n'); let count = 0;
                 for(let i=1; i<lines.length; i++){
                     if(!lines[i].trim()) continue; let cols = lines[i].split(',').map(c => c.trim().replace(/"/g, ''));
@@ -754,7 +813,7 @@
                     if(type === 'kios' && cols.length >= 1) { let n = cols[0]; if(n && !DB.kiosList.includes(n)) { DB.kiosList.push(n); count++; } }
                     if(type === 'karyawan' && cols.length >= 3) { let [nama, pin, kios] = cols; if(nama && pin && DB.kiosList.includes(kios)) { DB.karyawanList.push({nama, pinHash:hashPIN(pin), pinAsli: pin, role:'Tenant', kios}); count++; } }
                 }
-                saveDatabase(); event.target.value = '';
+                await saveDatabase(); event.target.value = '';
                 if(type === 'stok') renderStok(); if(type === 'kios') { buildDropdowns(); renderKiosManagerList(); } if(type === 'karyawan') renderKaryawan();
                 Swal.fire('Import Sukses', `Berhasil memproses ${count} data baru.`, 'success');
             }; reader.readAsText(file);
@@ -800,7 +859,7 @@
             }
         }
 
-        function ubahStatusAntrian(idNota, statusTarget) { let trx = DB.riwayatPenjualan.find(r => r.idNota === idNota); if(trx) { trx.statusAntrian = statusTarget; if(statusTarget === 'Selesai') trx.waktuSelesaiMs = Date.now(); saveDatabase(); updateQueueCounters(); } }
+        async function ubahStatusAntrian(idNota, statusTarget) { let trx = DB.riwayatPenjualan.find(r => r.idNota === idNota); if(trx) { trx.statusAntrian = statusTarget; if(statusTarget === 'Selesai') trx.waktuSelesaiMs = Date.now(); await saveDatabase(); updateQueueCounters(); } }
 
         function filterProduk(keyword = '') {
             if(currentQueueFilter !== 'ALL') return;
@@ -866,10 +925,10 @@
         function tambahUang(nom) { let inp = document.getElementById('input-bayar'); inp.value = parseInt(inp.value || 0) + nom; }
         function setUangPas() { let total = keranjang.reduce((sum, item) => sum + (item.harga * item.qty), 0); document.getElementById('input-bayar').value = total; }
 
-        function prosesCheckout(total, bayar, metode) {
+        async function prosesCheckout(total, bayar, metode) {
             keranjang.forEach(item => { let idx = DB.produkList.findIndex(p => p.id === item.id && p.kios === item.kios); if(idx !== -1) DB.produkList[idx].stok -= item.qty; });
             let trx = { idNota: "PJ-" + Date.now().toString().slice(-6), waktuMulaiMs: Date.now(), waktuSelesaiMs: null, waktu: new Date().toLocaleString('id-ID'), totalNota: total, bayar: bayar, metode: metode, kasir: userAktif.nama, tipePesanan: document.getElementById('tipe-pesanan').value, meja: document.getElementById('nomor-meja').value || "-", statusAntrian: "Proses", isVoid: false, items: [...keranjang] };
-            DB.riwayatPenjualan.unshift(trx); saveDatabase(); updateQueueCounters();
+            DB.riwayatPenjualan.unshift(trx); await saveDatabase(); updateQueueCounters();
             if(DB.settingPrinter === 'browser') { cetakNotaHTML(trx); } else if(DB.settingPrinter === 'bluetooth') { generateTeksStrukBluetooth(trx); }
             keranjang = []; document.getElementById('input-bayar').value = ''; document.getElementById('nomor-meja').value = ''; renderKeranjang(); filterProduk(); 
         }
@@ -928,7 +987,7 @@
                 btDevice = await navigator.bluetooth.requestDevice({ filters: [{services: ['000018f0-0000-1000-8000-00805f9b34fb']}], optionalServices: ['000018f0-0000-1000-8000-00805f9b34fb'] }); 
                 const server = await btDevice.gatt.connect(); const service = await server.getPrimaryService('000018f0-0000-1000-8000-00805f9b34fb'); 
                 btCharacteristic = await service.getCharacteristic('00002af1-0000-1000-8000-00805f9b34fb'); document.getElementById('printer-status').innerHTML = `<span style="color:var(--success);">✅ Terhubung: ${btDevice.name}</span>`; 
-                DB.printerName = btDevice.name; saveDatabase();
+                DB.printerName = btDevice.name; await saveDatabase();
             } catch (err) { console.error(err); }
         }
 
@@ -973,10 +1032,10 @@
         
         function bayarPakaiKartuNFC() {
             if(keranjang.length === 0) return; let total = keranjang.reduce((sum, item) => sum + (item.harga * item.qty), 0);
-            scanNFCToInput(null, (cardId) => {
+            scanNFCToInput(null, async (cardId) => {
                 let kartu = DB.kartuPelanggan.find(k => k.id === cardId); if(!kartu) { Swal.fire('Error', 'Kartu belum didaftarkan!', 'error'); return; }
                 if(kartu.saldo < total) { Swal.fire('Saldo Kurang', `Sisa saldo hanya Rp ${kartu.saldo.toLocaleString('id-ID')}`, 'error'); return; }
-                kartu.saldo -= total; saveDatabase(); prosesCheckout(total, total, 'Kartu NFC'); Swal.fire('Sukses', `Pembayaran Berhasil!\nSisa Saldo: Rp ${kartu.saldo.toLocaleString('id-ID')}`, 'success');
+                kartu.saldo -= total; await saveDatabase(); prosesCheckout(total, total, 'Kartu NFC'); Swal.fire('Sukses', `Pembayaran Berhasil!\nSisa Saldo: Rp ${kartu.saldo.toLocaleString('id-ID')}`, 'success');
             });
         }
 
@@ -1003,7 +1062,7 @@
                 let trx = DB.riwayatPenjualan.find(t => t.idNota === idNota); if(!trx) return;
                 let isOwner = otorisator.role === 'Owner'; let isKasirKiosTerkait = trx.items.some(i => i.kios === otorisator.kios);
                 if(!isOwner && !isKasirKiosTerkait) { return Swal.fire('Akses Ditolak', 'Anda tidak bisa membatalkan transaksi dari kios lain!', 'error'); }
-                if(!trx.isVoid) { trx.isVoid = true; trx.items.forEach(item => { let p = DB.produkList.find(x => x.id === item.id && x.kios === item.kios); if(p) p.stok += item.qty; }); saveDatabase(); renderLaporanPenjualan(); updateQueueCounters(); Swal.fire('Void Berhasil', 'Transaksi dibatalkan dan stok dikembalikan.', 'success'); }
+                if(!trx.isVoid) { trx.isVoid = true; trx.items.forEach(item => { let p = DB.produkList.find(x => x.id === item.id && x.kios === item.kios); if(p) p.stok += item.qty; }); await saveDatabase(); renderLaporanPenjualan(); updateQueueCounters(); Swal.fire('Void Berhasil', 'Transaksi dibatalkan dan stok dikembalikan.', 'success'); }
             }
         }
         
@@ -1016,16 +1075,16 @@
             tbody.innerHTML = htmlTemp;
         }
         
-        function tambahBarang() {
+        async function tambahBarang() {
             let id = document.getElementById('new-barcode').value.trim(); let nama = document.getElementById('new-name').value.trim(); let kategori = document.getElementById('new-kategori').value; let gambar = document.getElementById('new-img-url').value.trim();
             let harga = parseInt(document.getElementById('new-price').value || 0); let stok = parseInt(document.getElementById('new-stock').value || 0); let kios = document.getElementById('new-kios').value;
             if(!id || !nama || harga <= 0) return Swal.fire('Peringatan', 'Lengkapi form dengan benar!', 'warning');
             if(DB.produkList.some(p => p.id === id && p.kios === kios)) return Swal.fire('Error', 'ID Menu sudah terpakai di kios ini!', 'error');
-            DB.produkList.push({ id, nama, harga, stok, kios, kategori, gambar }); saveDatabase(); renderStok();
+            DB.produkList.push({ id, nama, harga, stok, kios, kategori, gambar }); await saveDatabase(); renderStok();
             document.getElementById('new-barcode').value=''; document.getElementById('new-name').value=''; document.getElementById('new-img-url').value=''; Swal.fire('Sukses', 'Menu berhasil ditambahkan', 'success');
         }
-        function hapusBarang(id, kios) { DB.produkList = DB.produkList.filter(p => !(p.id === id && p.kios === kios)); saveDatabase(); renderStok(); }
-        function updateStokCepat(id, kios, val) { let p = DB.produkList.find(x => x.id === id && x.kios === kios); if(p) { p.stok = parseInt(val||0); saveDatabase(); } }
+        async function hapusBarang(id, kios) { DB.produkList = DB.produkList.filter(p => !(p.id === id && p.kios === kios)); await saveDatabase(); renderStok(); }
+        async function updateStokCepat(id, kios, val) { let p = DB.produkList.find(x => x.id === id && x.kios === kios); if(p) { p.stok = parseInt(val||0); await saveDatabase(); } }
 
         function renderOpname() {
             let filterKios = document.getElementById('opname-kios-filter').value; let tbody = document.querySelector('#opname-table tbody'); let htmlTemp = '';
@@ -1040,17 +1099,16 @@
             if(diff > 0) { badge.innerText = `+${diff} (Lebih)`; badge.style.color = 'var(--success)'; } else if(diff < 0) { badge.innerText = `${diff} (Kurang)`; badge.style.color = 'var(--danger)'; } else { badge.innerText = `0 (Seimbang)`; badge.style.color = 'var(--secondary)'; }
         }
 
-        function ajustOpname(id, kios) { let val = document.getElementById(`real-stok-${id}`).value; if(val === '') return Swal.fire('Perhatian', 'Masukkan jumlah stok fisik terlebih dahulu.', 'warning'); let numVal = parseInt(val); let p = DB.produkList.find(x => x.id === id && x.kios === kios); if(p) { let diff = numVal - p.stok; p.stok = numVal; saveDatabase(); renderOpname(); Swal.fire('Audit Berhasil', `Stok diperbarui. Selisih tercatat: ${diff >= 0 ? '+' + diff : diff} pcs.`, 'success'); } }
+        async function ajustOpname(id, kios) { let val = document.getElementById(`real-stok-${id}`).value; if(val === '') return Swal.fire('Perhatian', 'Masukkan jumlah stok fisik terlebih dahulu.', 'warning'); let numVal = parseInt(val); let p = DB.produkList.find(x => x.id === id && x.kios === kios); if(p) { let diff = numVal - p.stok; p.stok = numVal; await saveDatabase(); renderOpname(); Swal.fire('Audit Berhasil', `Stok diperbarui. Selisih tercatat: ${diff >= 0 ? '+' + diff : diff} pcs.`, 'success'); } }
 
         function muatDataPengaturanUI() { document.getElementById('setting-struk-nama').value = DB.settingStruk.namaToko; document.getElementById('setting-struk-alamat').value = DB.settingStruk.alamat; document.getElementById('setting-struk-footer').value = DB.settingStruk.footer; document.getElementById('setting-printer-mode').value = DB.settingPrinter; gantiModePrinter(); }
-        function simpanPengaturanStruk() { DB.settingStruk.namaToko = document.getElementById('setting-struk-nama').value; DB.settingStruk.alamat = document.getElementById('setting-struk-alamat').value; DB.settingStruk.footer = document.getElementById('setting-struk-footer').value; saveDatabase(); document.getElementById('header-app-name').innerText = DB.settingStruk.namaToko; Swal.fire('Sukses', 'Disimpan!', 'success'); }
-        function gantiModePrinter() { DB.settingPrinter = document.getElementById('setting-printer-mode').value; saveDatabase(); document.getElementById('printer-help-browser').style.display = DB.settingPrinter === 'browser' ? 'block' : 'none'; document.getElementById('printer-help-rawbt').style.display = DB.settingPrinter === 'rawbt' ? 'block' : 'none'; document.getElementById('printer-help-bluetooth').style.display = DB.settingPrinter === 'bluetooth' ? 'block' : 'none'; }
+        async function simpanPengaturanStruk() { DB.settingStruk.namaToko = document.getElementById('setting-struk-nama').value; DB.settingStruk.alamat = document.getElementById('setting-struk-alamat').value; DB.settingStruk.footer = document.getElementById('setting-struk-footer').value; await saveDatabase(); document.getElementById('header-app-name').innerText = DB.settingStruk.namaToko; Swal.fire('Sukses', 'Disimpan!', 'success'); }
+        async function gantiModePrinter() { DB.settingPrinter = document.getElementById('setting-printer-mode').value; await saveDatabase(); document.getElementById('printer-help-browser').style.display = DB.settingPrinter === 'browser' ? 'block' : 'none'; document.getElementById('printer-help-rawbt').style.display = DB.settingPrinter === 'rawbt' ? 'block' : 'none'; document.getElementById('printer-help-bluetooth').style.display = DB.settingPrinter === 'bluetooth' ? 'block' : 'none'; }
         function testCetakPrinter() { if(DB.settingPrinter === 'browser') window.print(); else if(DB.settingPrinter === 'bluetooth') generateTeksStrukBluetooth({idNota: 'TEST', kasir: userAktif.nama, waktu: new Date().toLocaleString('id-ID'), items: [{nama: 'TEST PRINTER', qty: 1, harga: 0, catatan: ''}], totalNota: 0, bayar: 0, metode: 'Tunai'}); }
 
         function renderKaryawan() { 
             let tbody = document.querySelector('#karyawan-table tbody'); let htmlTemp = '';
             DB.karyawanList.forEach((k, idx) => { 
-                // Menampilkan pinAsli yang baru ditambahkan jika role adalah Owner
                 let pinTampil = k.pinAsli ? k.pinAsli : "******";
                 htmlTemp += `<tr>
                     <td><b>${k.nama}</b></td>
@@ -1063,59 +1121,29 @@
             tbody.innerHTML = htmlTemp;
         }
 
-        function tambahKaryawan() { 
+        async function tambahKaryawan() { 
             let nama = document.getElementById('k-nama').value; let pin = document.getElementById('k-pin').value; let kios = document.getElementById('k-role-kios').value; 
             if(nama && pin) { 
-                // Menyimpan pinHash untuk keamanan login dan pinAsli untuk diintip owner
                 DB.karyawanList.push({nama, pinHash:hashPIN(pin), pinAsli: pin, role:'Tenant', kios}); 
-                saveDatabase(); renderKaryawan(); 
+                await saveDatabase(); renderKaryawan(); 
                 document.getElementById('k-nama').value=''; document.getElementById('k-pin').value=''; 
                 Swal.fire('Sukses', 'Ditambahkan!', 'success'); 
             } 
         }
 
-        function hapusKaryawan(idx) { Swal.fire({ title:'Hapus?', icon:'warning', showCancelButton:true }).then(r => { if(r.isConfirmed) { DB.karyawanList.splice(idx,1); saveDatabase(); renderKaryawan(); } }); }
+        function hapusKaryawan(idx) { Swal.fire({ title:'Hapus?', icon:'warning', showCancelButton:true }).then(async r => { if(r.isConfirmed) { DB.karyawanList.splice(idx,1); await saveDatabase(); renderKaryawan(); } }); }
         
         function renderKiosManagerList() { let tbody = document.querySelector('#kios-list-table tbody'); let htmlTemp = ''; DB.kiosList.forEach((k, idx) => { let cnt = DB.produkList.filter(p=>p.kios===k).length; htmlTemp += `<tr><td><b>${k}</b></td><td>${cnt} Menu</td><td><button class="btn-action" style="background:var(--danger); padding:4px 10px;" onclick="hapusKiosDinamis(${idx}, '${k}')"><i class="fas fa-trash"></i> Tutup</button></td></tr>`; }); tbody.innerHTML = htmlTemp; }
-        function tambahKiosDinamis() { let n = document.getElementById('new-kios-name').value; if(n && !DB.kiosList.includes(n)) { DB.kiosList.push(n); saveDatabase(); buildDropdowns(); renderKiosManagerList(); document.getElementById('new-kios-name').value = ''; Swal.fire('Sukses', 'Kios dibuka!', 'success'); } }
-        function hapusKiosDinamis(idx, n) { Swal.fire({ title:`Tutup kios ${n}?`, icon:'warning', showCancelButton:true }).then(r => { if(r.isConfirmed) { DB.kiosList.splice(idx,1); DB.produkList=DB.produkList.filter(p=>p.kios!==n); saveDatabase(); buildDropdowns(); renderKiosManagerList(); } }); }
-        function hapusSemuaRiwayat() { Swal.fire({ title:'Reset log?', icon:'warning', showCancelButton:true }).then(r => { if(r.isConfirmed) { DB.riwayatPenjualan = []; saveDatabase(); renderLaporanPenjualan(); updateQueueCounters(); } }); }
+        async function tambahKiosDinamis() { let n = document.getElementById('new-kios-name').value; if(n && !DB.kiosList.includes(n)) { DB.kiosList.push(n); await saveDatabase(); buildDropdowns(); renderKiosManagerList(); document.getElementById('new-kios-name').value = ''; Swal.fire('Sukses', 'Kios dibuka!', 'success'); } }
+        function hapusKiosDinamis(idx, n) { Swal.fire({ title:`Tutup kios ${n}?`, icon:'warning', showCancelButton:true }).then(async r => { if(r.isConfirmed) { DB.kiosList.splice(idx,1); DB.produkList=DB.produkList.filter(p=>p.kios!==n); await saveDatabase(); buildDropdowns(); renderKiosManagerList(); } }); }
+        function hapusSemuaRiwayat() { Swal.fire({ title:'Reset log?', icon:'warning', showCancelButton:true }).then(async r => { if(r.isConfirmed) { DB.riwayatPenjualan = []; await saveDatabase(); renderLaporanPenjualan(); updateQueueCounters(); } }); }
 
         function renderKartu() { if(userAktif.role !== 'Owner') return; let tbody = document.querySelector('#cards-table tbody'); let htmlTemp = ''; DB.kartuPelanggan.forEach((k, idx) => { htmlTemp += `<tr><td><code>${k.id}</code></td><td><b>${k.nama}</b></td><td style="color:var(--success); font-weight:800;">Rp ${k.saldo.toLocaleString('id-ID')}</td><td><button class="btn-action" style="background:var(--danger); padding:4px 10px;" onclick="hapusKartu(${idx})"><i class="fas fa-trash"></i></button></td></tr>`; }); tbody.innerHTML = htmlTemp; }
-        function hapusKartu(idx) { DB.kartuPelanggan.splice(idx,1); saveDatabase(); renderKartu(); }
+        async function hapusKartu(idx) { DB.kartuPelanggan.splice(idx,1); await saveDatabase(); renderKartu(); }
         function cekSaldoKartu() { let id = document.getElementById('topup-card-id').value; let k = DB.kartuPelanggan.find(x => x.id === id); if(k) { document.getElementById('info-nama-pemilik').innerText = k.nama; document.getElementById('info-saldo-pemilik').innerText = 'Rp ' + k.saldo.toLocaleString('id-ID'); document.getElementById('topup-info-box').style.display = 'block'; } else { Swal.fire('Tidak Ditemukan', 'Kartu tidak terdaftar di sistem.', 'error'); } }
-        function eksekusiTopUp() { let id = document.getElementById('topup-card-id').value; let k = DB.kartuPelanggan.find(x => x.id === id); let nominal = parseInt(document.getElementById('topup-amount').value || 0); if(k && nominal > 0) { k.saldo += nominal; saveDatabase(); renderKartu(); Swal.fire('Sukses', 'Top Up Berhasil!', 'success'); document.getElementById('topup-amount').value = ''; document.getElementById('topup-info-box').style.display = 'none'; } }
+        async function eksekusiTopUp() { let id = document.getElementById('topup-card-id').value; let k = DB.kartuPelanggan.find(x => x.id === id); let nominal = parseInt(document.getElementById('topup-amount').value || 0); if(k && nominal > 0) { k.saldo += nominal; await saveDatabase(); renderKartu(); Swal.fire('Sukses', 'Top Up Berhasil!', 'success'); document.getElementById('topup-amount').value = ''; document.getElementById('topup-info-box').style.display = 'none'; } }
 
         setInterval(() => { let now = new Date(); let t = document.getElementById('clock-time'); let d = document.getElementById('clock-date'); if(t) t.innerText = now.toLocaleTimeString('id-ID', { hour12: false }); if(d) d.innerText = now.toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }); }, 1000);
     </script>
-
-<!-- FIREBASE SDK -->
-<script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
-
-<script>
-  // 1. KONFIGURASI FIREBASE ANDA
-  const firebaseConfig = {
-    apiKey: "AIzaSyDSJbIrL7D5N3KnE8mzwi6pxusG3l27ack",
-    authDomain: "kasir-kantin50.firebaseapp.com",
-    projectId: "kasir-kantin50",
-    storageBucket: "kasir-kantin50.firebasestorage.app",
-    messagingSenderId: "506660527827",
-    appId: "1:506660527827:web:c554e2b19a100a7d3c3e26",
-    measurementId: "G-P27Q0TM517"
-  };
-
-  // 2. INISIALISASI FIREBASE & FIRESTORE
-  firebase.initializeApp(firebaseConfig);
-  const db = firebase.firestore();
-
-  // 3. AKTIFKAN MODE OFFLINE (KHUSUS PWA)
-  db.enablePersistence().catch((err) => {
-      console.error("Gagal mengaktifkan mode offline:", err);
-  });
-</script>
-
-
-    
 </body>
 </html>
