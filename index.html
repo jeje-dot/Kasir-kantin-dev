@@ -5,7 +5,11 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>POS Pujasera - Ultimate Enterprise Edition</title>
     
-    <!-- Tambahan Library CryptoJS untuk Hashing yang Lebih Aman -->
+    <!-- PWA Manifest & Meta Tags agar bisa di-install -->
+    <meta name="theme-color" content="#0f172a">
+    <link rel="manifest" id="dynamic-manifest">
+
+    <!-- Library Pendukung -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/crypto-js.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
@@ -222,7 +226,8 @@
             </div>
             
             <div style="flex: 1;"></div>
-            <div class="menu-item" style="color: var(--danger); border-top: 1px solid var(--border); margin-top: 10px;" onclick="logout()"><i class="fas fa-power-off" style="color: var(--danger);"></i> Kunci / Keluar</div>
+            <div class="menu-item" id="btn-install-pwa" style="display:none; color: var(--success); border-top: 1px solid var(--border);" onclick="installPWA()"><i class="fas fa-download" style="color: var(--success);"></i> Install Aplikasi</div>
+            <div class="menu-item" style="color: var(--danger); border-top: 1px solid var(--border);" onclick="logout()"><i class="fas fa-power-off" style="color: var(--danger);"></i> Kunci / Keluar</div>
         </aside>
 
         <!-- CONTENT AREA -->
@@ -574,12 +579,12 @@
         </main>
     </div>
 
-    <!-- FIREBASE SDK (DIMASUKKAN SEBELUM LOGIKA UTAMA APLIKASI) -->
+    <!-- FIREBASE SDK -->
     <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
 
     <script>
-      // 1. KONFIGURASI FIREBASE ANDA
+      // Konfigurasi Firebase
       const firebaseConfig = {
         apiKey: "AIzaSyDSJbIrL7D5N3KnE8mzwi6pxusG3l27ack",
         authDomain: "kasir-kantin50.firebaseapp.com",
@@ -590,20 +595,56 @@
         measurementId: "G-P27Q0TM517"
       };
 
-      // 2. INISIALISASI FIREBASE & FIRESTORE
       firebase.initializeApp(firebaseConfig);
       const db = firebase.firestore();
 
-      // 3. AKTIFKAN MODE OFFLINE (KHUSUS PWA)
       db.enablePersistence().catch((err) => {
           console.error("Gagal mengaktifkan mode offline:", err);
       });
     </script>
 
-    <!-- JAVASCRIPT LOGIC UTAMA (DIPERBARUI UNTUK FIREBASE) -->
+    <!-- SCRIPT UTAMA POS -->
     <script>
         let btDevice = null; 
         let btCharacteristic = null;
+        let deferredPrompt = null;
+
+        // Auto-generate manifest dynamic supaya tombol Install PWA muncul di browser modern
+        window.addEventListener('DOMContentLoaded', () => {
+            const manifestData = {
+                name: "POS Pujasera Enterprise",
+                short_name: "POS Pujasera",
+                start_url: window.location.href,
+                display: "standalone",
+                background_color: "#0f172a",
+                theme_color: "#0f172a",
+                icons: [
+                    { src: "https://cdn-icons-png.flaticon.com/512/2897/2897785.png", sizes: "512x512", type: "image/png" }
+                ]
+            };
+            const stringBlob = new Blob([JSON.stringify(manifestData)], { type: 'application/json' });
+            document.getElementById('dynamic-manifest').setAttribute('href', URL.createObjectURL(stringBlob));
+        });
+
+        window.addEventListener('beforeinstallprompt', (e) => {
+            e.preventDefault();
+            deferredPrompt = e;
+            let installBtn = document.getElementById('btn-install-pwa');
+            if(installBtn) installBtn.style.display = 'flex';
+        });
+
+        async function installPWA() {
+            if (deferredPrompt) {
+                deferredPrompt.prompt();
+                let { outcome } = await deferredPrompt.userChoice;
+                if (outcome === 'accepted') {
+                    document.getElementById('btn-install-pwa').style.display = 'none';
+                }
+                deferredPrompt = null;
+            } else {
+                Swal.fire('Info', 'Aplikasi sudah terpasang atau browser Anda tidak mendukung prompt otomatis. Gunakan opsi "Tambahkan ke Layar Utama" pada menu titik tiga browser Anda.', 'info');
+            }
+        }
 
         function hashPIN(pin) {
             return CryptoJS.SHA256(pin).toString();
@@ -613,11 +654,8 @@
 
         async function initDatabase() {
             try {
-                // Mencoba mengambil data dari Firebase terlebih dahulu
                 const docRef = await db.collection("pos_data").doc("pujasera_pusat").get();
-                
                 if (docRef.exists) {
-                    // JIKA DATA FIREBASE ADA: Gunakan data dari cloud
                     let data = docRef.data();
                     DB.kiosList = data.kiosList || [];
                     DB.produkList = data.produkList || [];
@@ -628,42 +666,32 @@
                     DB.settingPrinter = data.settingPrinter || 'browser';
                     DB.printerName = data.printerName || '';
                 } else {
-                    // JIKA FIREBASE KOSONG: Auto-Migrasi data dari LocalStorage lama ke Firebase
-                    console.log("Melakukan migrasi data dari LocalStorage ke Firebase...");
-                    DB.kiosList = JSON.parse(localStorage.getItem('kios_list')) || ["Kios Aneka Bakso", "Kios Minuman Segar"];
-                    DB.produkList = JSON.parse(localStorage.getItem('produk_multikios')) || [
+                    DB.kiosList = ["Kios Aneka Bakso", "Kios Minuman Segar"];
+                    DB.produkList = [
                         { id: "BKS01", nama: "Bakso Urat Spesial", harga: 20000, stok: 40, kios: "Kios Aneka Bakso", kategori: "Makanan", gambar: "" },
                         { id: "BKS02", nama: "Bakso Telur Asin", harga: 18000, stok: 35, kios: "Kios Aneka Bakso", kategori: "Makanan", gambar: "" },
                         { id: "MIN01", nama: "Es Teh Manis", harga: 5000, stok: 8, kios: "Kios Minuman Segar", kategori: "Minuman", gambar: "" },
                         { id: "MIN02", nama: "Es Kopi Susu Aren", harga: 15000, stok: 5, kios: "Kios Minuman Segar", kategori: "Minuman", gambar: "" },
                         { id: "SNK01", nama: "Kerupuk Kulit", harga: 4000, stok: 20, kios: "Kios Aneka Bakso", kategori: "Snack", gambar: "" }
                     ];
-                    DB.riwayatPenjualan = JSON.parse(localStorage.getItem('riwayat_multikios')) || [];
-                    DB.kartuPelanggan = JSON.parse(localStorage.getItem('kartu_pelanggan')) || [];
-                    DB.settingStruk = JSON.parse(localStorage.getItem('setting_struk')) || { namaToko: "PUJASERA SEJAHTERA", alamat: "Jl. Raya Kuliner No. 123", footer: "Terima Kasih Atas Kunjungan Anda!" };
-                    DB.settingPrinter = localStorage.getItem('setting_printer') || 'browser';
-                    DB.printerName = localStorage.getItem('printer_name') || "";
-
-                    DB.karyawanList = JSON.parse(localStorage.getItem('karyawan_v2'));
-                    if(!DB.karyawanList || DB.karyawanList.length === 0) {
-                        DB.karyawanList = [
-                            { nama: "Admin Pusat", pinHash: hashPIN("123456"), pinAsli: "123456", role: "Owner", kios: "SEMUA KIOS" },
-                            { nama: "Kasir Bakso", pinHash: hashPIN("111111"), pinAsli: "111111", role: "Tenant", kios: "Kios Aneka Bakso" }
-                        ];
-                    }
-                    
-                    // Simpan hasil migrasi ke Firebase agar tersimpan di cloud
+                    DB.riwayatPenjualan = [];
+                    DB.kartuPelanggan = [];
+                    DB.settingStruk = { namaToko: "PUJASERA SEJAHTERA", alamat: "Jl. Raya Kuliner No. 123", footer: "Terima Kasih Atas Kunjungan Anda!" };
+                    DB.settingPrinter = 'browser';
+                    DB.printerName = "";
+                    DB.karyawanList = [
+                        { nama: "Admin Pusat", pinHash: hashPIN("123456"), pinAsli: "123456", role: "Owner", kios: "SEMUA KIOS" },
+                        { nama: "Kasir Bakso", pinHash: hashPIN("111111"), pinAsli: "111111", role: "Tenant", kios: "Kios Aneka Bakso" }
+                    ];
                     await saveDatabase();
                 }
             } catch (error) {
                 console.error("Gagal terhubung ke Firebase:", error);
-                if(typeof Swal !== 'undefined') Swal.fire('Koneksi Error', 'Gagal memuat database. Periksa koneksi internet Anda.', 'error');
             }
         }
 
         async function saveDatabase() {
             try {
-                // Mengirim semua object DB ke document "pujasera_pusat" di collection "pos_data"
                 await db.collection("pos_data").doc("pujasera_pusat").set({
                     kiosList: DB.kiosList,
                     produkList: DB.produkList,
@@ -676,7 +704,6 @@
                 });
             } catch (error) {
                 console.error("Gagal menyimpan ke Firebase:", error);
-                if(typeof Swal !== 'undefined') Swal.fire('Error Penyimpanan', 'Data gagal disinkronkan ke Cloud.', 'error');
             }
         }
 
@@ -684,25 +711,31 @@
         let kategoriAktif = 'Semua'; let currentQueueFilter = 'ALL'; 
         let isLocked = false; let salahLogCount = 0;
 
-        // Mengubah window.onload menjadi async agar menunggu Firebase dimuat
         window.onload = async () => { 
             await initDatabase(); 
+            
+            // Cek apakah ada sesi aktif di sessionStorage agar aman dari tidak sengaja refresh
+            let savedUser = sessionStorage.getItem('pos_user_aktif');
+            if (savedUser) {
+                userAktif = JSON.parse(savedUser);
+                kiosAktifPOS = userAktif.role === 'Owner' ? DB.kiosList[0] : userAktif.kios;
+                lanjutkanLogin();
+            }
         };
 
         function actionLogin() {
             if (isLocked) return false;
-
             let pinInputEl = document.getElementById('input-pin');
             let pinInput = pinInputEl.value.trim();
             if(!pinInput) return false;
             
             let inputHash = hashPIN(pinInput);
             let user = DB.karyawanList.find(u => u.pinHash === inputHash);
-
             pinInputEl.value = ''; 
 
             if(user) {
                 salahLogCount = 0; userAktif = user; 
+                sessionStorage.setItem('pos_user_aktif', JSON.stringify(user)); // Simpan sesi
                 kiosAktifPOS = user.role === 'Owner' ? DB.kiosList[0] : user.kios;
                 lanjutkanLogin();
             } else {
@@ -752,7 +785,11 @@
             if(DB.settingPrinter === 'bluetooth') autoConnectPrinter();
         }
 
-        function logout() { location.reload(); }
+        function logout() { 
+            sessionStorage.removeItem('pos_user_aktif'); // Hapus sesi saat logout
+            location.reload(); 
+        }
+
         function toggleSidebar() { document.getElementById('sidebar-menu').classList.toggle('collapsed'); }
 
         function buildDropdowns() {
