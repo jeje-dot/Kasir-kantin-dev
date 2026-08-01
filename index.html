@@ -79,7 +79,9 @@
         #sec-pos { padding: 12px; background: #e2e8f0; overflow: hidden; }
         .pos-layout { display: flex; gap: 12px; height: 100%; width: 100%; overflow: hidden; }
         .pos-products { flex: 1; display: flex; flex-direction: column; background: var(--card-bg); border-radius: 14px; padding: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.02); border: 1px solid var(--border); min-width: 0; height: 100%; overflow: hidden; }
-        .pos-cart { width: 340px; background: white; padding: 15px; border-radius: 14px; border: 1px solid var(--border); box-shadow: 0 4px 10px rgba(0,0,0,0.05); flex-shrink: 0; display: flex; flex-direction: column; height: 100%; overflow: hidden; }
+        
+        /* DIUBAH: .pos-cart menjadi block dan overflow-y: auto agar seluruh panel kanan bisa di-scroll ke bawah */
+        .pos-cart { width: 340px; background: white; padding: 15px; border-radius: 14px; border: 1px solid var(--border); box-shadow: 0 4px 10px rgba(0,0,0,0.05); flex-shrink: 0; display: block; overflow-y: auto; height: 100%; }
         
         .search-bar { flex: 1; position: relative; }
         .search-bar input { width: 100%; padding: 10px 12px 10px 38px; border: 2px solid var(--border); border-radius: 10px; font-size: 13px; outline: none; background: var(--light); transition: 0.2s; }
@@ -101,8 +103,8 @@
         .product-img img { width: 100%; height: 100%; object-fit: cover; }
         .product-price { color: var(--danger); font-weight: 800; font-size: 13px; margin-top: 4px; }
 
-        /* --- CART COMPONENTS --- */
-        .cart-wrapper { flex: 1; overflow-y: auto; padding: 8px; background: var(--light); border: 1px solid var(--border); border-radius: 10px; margin-bottom: 10px; min-height: 0; }
+        /* DIUBAH: .cart-wrapper tidak lagi memaksa flex: 1, sehingga bisa melar ke bawah */
+        .cart-wrapper { padding: 8px; background: var(--light); border: 1px solid var(--border); border-radius: 10px; margin-bottom: 15px; min-height: 120px; }
         .cart-item { background: var(--card-bg); border: 1px solid var(--border); border-radius: 8px; padding: 10px; margin-bottom: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.02); }
         .btn-checkout { width: 100%; background: var(--success); color: white; border: none; padding: 12px; border-radius: 8px; font-size: 14px; font-weight: 800; cursor: pointer; display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; transition: 0.2s; }
         .btn-checkout:hover { background: #059669; filter: brightness(0.9); }
@@ -124,7 +126,7 @@
         @media (max-width: 850px) {
             .pos-layout { flex-direction: column; overflow-y: auto; height: auto; }
             .pos-products { height: auto; min-height: 500px; flex: none; }
-            .pos-cart { width: 100%; height: auto; flex: none; }
+            .pos-cart { width: 100%; height: auto; flex: none; overflow-y: visible; }
             body { overflow: auto; }
         }
 
@@ -273,6 +275,27 @@
                         </div>
                     </div>
                 </div>
+
+                <!-- PANEL BARU: INFO PESANAN DIPROSES & SELESAI -->
+                <div style="margin-top: 15px; background: var(--card-bg); padding: 18px; border-radius: 12px; border: 1px solid var(--border);">
+                    <h4 style="margin-bottom: 12px; color: var(--text-muted); text-transform: uppercase; font-size: 11px; font-weight: 800;">Status Pesanan Hari Ini</h4>
+                    <div style="display: flex; gap: 15px; flex-wrap: wrap;">
+                        <div style="flex: 1; border: 1px solid var(--border); border-radius: 8px; padding: 10px; min-width: 250px;">
+                            <h5 style="color: var(--secondary); border-bottom: 1px solid var(--border); padding-bottom: 8px; margin-bottom: 8px; display:flex; justify-content:space-between; align-items:center;">
+                                <span><i class="fas fa-spinner"></i> Sedang Diproses</span>
+                                <span id="dash-badge-proses" style="background:var(--secondary); color:white; padding: 2px 8px; border-radius:10px; font-size:10px;">0</span>
+                            </h5>
+                            <div id="dash-order-proses" style="max-height: 250px; overflow-y: auto;"></div>
+                        </div>
+                        <div style="flex: 1; border: 1px solid var(--border); border-radius: 8px; padding: 10px; min-width: 250px;">
+                            <h5 style="color: var(--success); border-bottom: 1px solid var(--border); padding-bottom: 8px; margin-bottom: 8px; display:flex; justify-content:space-between; align-items:center;">
+                                <span><i class="fas fa-check-circle"></i> Selesai</span>
+                                <span id="dash-badge-selesai" style="background:var(--success); color:white; padding: 2px 8px; border-radius:10px; font-size:10px;">0</span>
+                            </h5>
+                            <div id="dash-order-selesai" style="max-height: 250px; overflow-y: auto;"></div>
+                        </div>
+                    </div>
+                </div>
             </div>
 
             <!-- SECTION: POS (KASIR ENTERPRISE) -->
@@ -332,9 +355,10 @@
                             <input type="text" id="nomor-meja" class="form-control" placeholder="Nomor Meja / Nama Pemesan" style="font-size: 12px; text-align: center; background: var(--light);">
                         </div>
 
+                        <!-- PANEL KERANJANG - Kini akan melar ke bawah dan mendorong area pembayaran ke bawah -->
                         <div class="cart-wrapper" id="cart-items-container"></div>
 
-                        <div style="border-top:2px dashed var(--border); padding-top:10px; flex-shrink: 0;">
+                        <div style="border-top:2px dashed var(--border); padding-top:10px;">
                             <div style="display: flex; justify-content: space-between; font-weight: 900; font-size: 13px; margin-bottom: 10px; color: var(--text-muted); text-transform: uppercase;">
                                 <span>Total Bayar:</span>
                                 <span id="grand-total" style="color: var(--primary); font-size: 18px;">Rp 0</span>
@@ -539,15 +563,19 @@
 
             <!-- SECTION: PENGATURAN -->
             <div id="sec-pengaturan" class="dashboard-section">
-                <h2 style="color: var(--primary); margin-bottom: 15px;"><i class="fas fa-tools"></i> Pengaturan Printer & Sistem</h2>
+                <h2 style="color: var(--primary); margin-bottom: 15px;"><i class="fas fa-tools"></i> Pengaturan Printer & Profil</h2>
                 <div style="display: flex; gap: 15px; flex-wrap: wrap;">
                     
-                    <!-- BOX PROFIL AKUN (BARU DITAMBAHKAN) -->
-                    <div style="flex: 1; background: var(--card-bg); padding: 20px; border-radius: 12px; border: 1px solid var(--border); min-width: 280px;">
-                        <h4 style="margin-bottom: 15px; color: var(--primary); display: flex; align-items: center; gap: 8px; font-size: 14px;"><i class="fas fa-user-edit"></i> Pengaturan Profil Akun</h4>
+                    <!-- BOX PROFIL AKUN (HANYA OWNER) -->
+                    <div id="setting-profil-akun" style="flex: 1; background: var(--card-bg); padding: 20px; border-radius: 12px; border: 1px solid var(--border); min-width: 280px; display: none;">
+                        <h4 style="margin-bottom: 15px; color: var(--primary); display: flex; align-items: center; gap: 8px; font-size: 14px;"><i class="fas fa-user-edit"></i> Edit Profil Karyawan</h4>
+                        <div class="form-group">
+                            <label>Pilih Karyawan:</label>
+                            <select id="profil-user-select" class="form-control" onchange="loadProfilTerpilih()"></select>
+                        </div>
                         <div class="form-group"><label>Ubah Nama Profil:</label><input type="text" id="profil-nama" class="form-control"></div>
                         <div class="form-group"><label>Ubah PIN (Angka):</label><input type="password" id="profil-pin" class="form-control" maxlength="6"></div>
-                        <button class="btn-action" style="background: var(--accent); width: 100%; justify-content: center; padding: 12px;" onclick="updateProfil()"><i class="fas fa-save"></i> Simpan Profil</button>
+                        <button class="btn-action" style="background: var(--accent); width: 100%; justify-content: center; padding: 12px;" onclick="updateProfilKaryawan()"><i class="fas fa-save"></i> Simpan Profil</button>
                     </div>
 
                     <div id="setting-kop-struk" style="flex: 1; background: var(--card-bg); padding: 20px; border-radius: 12px; border: 1px solid var(--border); min-width: 280px; display: none;">
@@ -660,7 +688,6 @@
         let kategoriAktif = 'Semua'; let currentQueueFilter = 'ALL'; 
         let isLocked = false; let salahLogCount = 0; let isFirstLoad = true;
 
-        // DIUBAH: Menggunakan onSnapshot agar REAL-TIME (Sinkronisasi Otomatis Antar Perangkat)
         async function initDatabase() {
             try {
                 db.collection("pos_data").doc("pujasera_pusat").onSnapshot((docRef) => {
@@ -697,7 +724,6 @@
                         let savedUser = sessionStorage.getItem('pos_user_aktif');
                         if (savedUser) {
                             let tempUser = JSON.parse(savedUser);
-                            // Ambil info terupdate (jika pin diubah di device lain)
                             let updatedUser = DB.karyawanList.find(u => u.pinHash === tempUser.pinHash);
                             if(updatedUser) userAktif = updatedUser;
                             else userAktif = tempUser; 
@@ -706,7 +732,6 @@
                             lanjutkanLogin();
                         }
                     } else {
-                        // Jika ada perubahan dari perangkat lain, update tampilan menu yang sedang dibuka
                         if (userAktif) reRenderActiveMenu();
                     }
                 }, (error) => {
@@ -771,10 +796,12 @@
                 document.getElementById('menu-owner-only').style.display = 'block'; document.querySelectorAll('.menu-owner-restricted').forEach(el => el.style.display = 'flex');
                 document.getElementById('owner-card-list-container').style.display = 'block'; document.getElementById('btn-reset-riwayat').style.display = 'inline-flex';
                 document.getElementById('setting-kop-struk').style.display = 'block'; 
+                document.getElementById('setting-profil-akun').style.display = 'block'; // Profil hanya untuk Owner
             } else {
                 document.getElementById('menu-owner-only').style.display = 'none'; document.querySelectorAll('.menu-owner-restricted').forEach(el => el.style.display = 'none');
                 document.getElementById('owner-card-list-container').style.display = 'none'; document.getElementById('btn-reset-riwayat').style.display = 'none'; 
                 document.getElementById('setting-kop-struk').style.display = 'none'; 
+                document.getElementById('setting-profil-akun').style.display = 'none'; 
             }
             buildDropdowns(); muatDataPengaturanUI(); gantiKiosPOS(); switchMenu('dashboard');
             if(DB.settingPrinter === 'bluetooth') autoConnectPrinter();
@@ -803,7 +830,6 @@
             reRenderActiveMenu(menuId);
         }
 
-        // FUNGSI BARU: Untuk memperbarui data secara Real-Time tanpa me-reset keranjang
         function reRenderActiveMenu(menuIdOverride = null) {
             let menuId = menuIdOverride;
             if(!menuId) {
@@ -822,20 +848,48 @@
 
         function updateDashboard() {
             let today = new Date().toLocaleDateString('id-ID'); let todayOmzet = 0; let todayTrx = 0; let itemCounter = {};
+            
+            let listProses = ''; let countProses = 0;
+            let listSelesai = ''; let countSelesai = 0;
+
             DB.riwayatPenjualan.forEach(r => {
                 if(r.waktu.includes(today) && !r.isVoid) { 
                     let validForUser = userAktif.role === 'Owner' || r.items.some(i => i.kios === userAktif.kios);
                     if(validForUser) {
                         todayOmzet += r.totalNota; todayTrx++; 
                         r.items.forEach(i => { if(userAktif.role === 'Owner' || i.kios === userAktif.kios) { if(!itemCounter[i.nama]) itemCounter[i.nama] = 0; itemCounter[i.nama] += i.qty; } });
+                        
+                        // Buat daftar pesanan untuk panel informasi di dashboard
+                        let itemStr = r.items.map(i => `${i.nama}(${i.qty})`).join(', ');
+                        let cardHTML = `
+                            <div style="padding: 10px; border-bottom: 1px dashed var(--border); font-size: 11px;">
+                                <div style="display:flex; justify-content:space-between; margin-bottom:4px;">
+                                    <span style="font-weight:900; color:var(--primary);">${r.idNota}</span>
+                                    <span style="color:var(--text-muted); font-weight:bold;">Meja: ${r.meja}</span>
+                                </div>
+                                <div style="color:var(--text-main); margin-bottom:4px; line-height:1.4;">${itemStr}</div>
+                                <div style="font-weight:800; color:var(--accent);">Rp ${r.totalNota.toLocaleString('id-ID')}</div>
+                            </div>
+                        `;
+                        if(r.statusAntrian === 'Proses') { listProses += cardHTML; countProses++; } 
+                        else { listSelesai += cardHTML; countSelesai++; }
                     }
                 }
             });
+            
             document.getElementById('dash-omzet').innerText = `Rp ${todayOmzet.toLocaleString('id-ID')}`; document.getElementById('dash-trx').innerText = todayTrx;
+            
+            // Render list top items
             let sortedItems = Object.keys(itemCounter).sort((a,b) => itemCounter[b] - itemCounter[a]).slice(0, 5);
             let tbody = document.querySelector('#dash-top-items tbody'); let htmlTemp = '';
             if(sortedItems.length === 0) htmlTemp = '<tr><td colspan="2" style="text-align:center; color:gray;">Belum ada penjualan hari ini</td></tr>';
             sortedItems.forEach(nama => { htmlTemp += `<tr><td><i class="fas fa-fire" style="color:var(--danger); margin-right:5px;"></i> ${nama}</td><td><b>${itemCounter[nama]}</b> porsi</td></tr>`; }); tbody.innerHTML = htmlTemp;
+
+            // Update Panel Order di Dashboard
+            document.getElementById('dash-badge-proses').innerText = countProses;
+            document.getElementById('dash-badge-selesai').innerText = countSelesai;
+            document.getElementById('dash-order-proses').innerHTML = listProses || '<div style="text-align:center; color:gray; padding:15px 10px; font-size:12px;">Tidak ada pesanan</div>';
+            document.getElementById('dash-order-selesai').innerHTML = listSelesai || '<div style="text-align:center; color:gray; padding:15px 10px; font-size:12px;">Tidak ada pesanan</div>';
         }
 
         function downloadCSV(dataArray, filename) { let csvContent = "data:text/csv;charset=utf-8,"; dataArray.forEach(row => { csvContent += row.join(",") + "\r\n"; }); let link = document.createElement("a"); link.setAttribute("href", encodeURI(csvContent)); link.setAttribute("download", filename); document.body.appendChild(link); link.click(); document.body.removeChild(link); }
@@ -1141,54 +1195,66 @@
         async function ajustOpname(id, kios) { let val = document.getElementById(`real-stok-${id}`).value; if(val === '') return Swal.fire('Perhatian', 'Masukkan jumlah stok fisik terlebih dahulu.', 'warning'); let numVal = parseInt(val); let p = DB.produkList.find(x => x.id === id && x.kios === kios); if(p) { let diff = numVal - p.stok; p.stok = numVal; await saveDatabase(); renderOpname(); Swal.fire('Audit Berhasil', `Stok diperbarui. Selisih tercatat: ${diff >= 0 ? '+' + diff : diff} pcs.`, 'success'); } }
 
         function muatDataPengaturanUI() { 
-            // Data pengaturan Struk & Printer
             document.getElementById('setting-struk-nama').value = DB.settingStruk.namaToko; 
             document.getElementById('setting-struk-alamat').value = DB.settingStruk.alamat; 
             document.getElementById('setting-struk-footer').value = DB.settingStruk.footer; 
             document.getElementById('setting-printer-mode').value = DB.settingPrinter; 
             gantiModePrinter(); 
 
-            // Data Pengaturan Profil (BARU)
-            if(userAktif) {
-                document.getElementById('profil-nama').value = userAktif.nama;
-                document.getElementById('profil-pin').value = userAktif.pinAsli || "";
+            // Jika Owner yang login, muat dropdown list karyawan
+            if(userAktif && userAktif.role === 'Owner') {
+                let userSelect = document.getElementById('profil-user-select');
+                if(userSelect) {
+                    userSelect.innerHTML = DB.karyawanList.map((k, index) => `<option value="${index}">${k.nama} (${k.role})</option>`).join('');
+                    loadProfilTerpilih();
+                }
             }
         }
         
-        async function simpanPengaturanStruk() { DB.settingStruk.namaToko = document.getElementById('setting-struk-nama').value; DB.settingStruk.alamat = document.getElementById('setting-struk-alamat').value; DB.settingStruk.footer = document.getElementById('setting-struk-footer').value; await saveDatabase(); document.getElementById('header-app-name').innerText = DB.settingStruk.namaToko; Swal.fire('Sukses', 'Disimpan!', 'success'); }
-        async function gantiModePrinter() { DB.settingPrinter = document.getElementById('setting-printer-mode').value; await saveDatabase(); document.getElementById('printer-help-browser').style.display = DB.settingPrinter === 'browser' ? 'block' : 'none'; document.getElementById('printer-help-rawbt').style.display = DB.settingPrinter === 'rawbt' ? 'block' : 'none'; document.getElementById('printer-help-bluetooth').style.display = DB.settingPrinter === 'bluetooth' ? 'block' : 'none'; }
-        function testCetakPrinter() { if(DB.settingPrinter === 'browser') window.print(); else if(DB.settingPrinter === 'bluetooth') generateTeksStrukBluetooth({idNota: 'TEST', kasir: userAktif.nama, waktu: new Date().toLocaleString('id-ID'), items: [{nama: 'TEST PRINTER', qty: 1, harga: 0, catatan: ''}], totalNota: 0, bayar: 0, metode: 'Tunai'}); }
+        // FUNGSI BARU: Load data profil saat dropdown dipilih
+        function loadProfilTerpilih() {
+            let idx = document.getElementById('profil-user-select').value;
+            let targetUser = DB.karyawanList[idx];
+            if(targetUser) {
+                document.getElementById('profil-nama').value = targetUser.nama;
+                document.getElementById('profil-pin').value = targetUser.pinAsli || "";
+            }
+        }
 
-        // FUNGSI BARU: Update Profil (Nama & PIN)
-        async function updateProfil() {
+        // FUNGSI BARU: Simpan update profil untuk Karyawan terpilih
+        async function updateProfilKaryawan() {
+            let idx = document.getElementById('profil-user-select').value;
             let namaBaru = document.getElementById('profil-nama').value.trim();
             let pinBaru = document.getElementById('profil-pin').value.trim();
             
             if(!namaBaru || !pinBaru || pinBaru.length !== 6) {
-                return Swal.fire('Error', 'Nama profil tidak boleh kosong dan PIN harus tepat 6 karakter/angka!', 'warning');
+                return Swal.fire('Error', 'Nama tidak boleh kosong dan PIN harus tepat 6 angka!', 'warning');
             }
             
-            let userIndex = DB.karyawanList.findIndex(u => u.pinHash === userAktif.pinHash);
-            if(userIndex !== -1) {
-                // Update data di Array
-                DB.karyawanList[userIndex].nama = namaBaru;
-                DB.karyawanList[userIndex].pinAsli = pinBaru;
-                DB.karyawanList[userIndex].pinHash = hashPIN(pinBaru);
+            let targetUser = DB.karyawanList[idx];
+            if(targetUser) {
+                targetUser.nama = namaBaru;
+                targetUser.pinAsli = pinBaru;
+                targetUser.pinHash = hashPIN(pinBaru);
                 
-                // Update userAktif saat ini dan Sesi
-                userAktif = DB.karyawanList[userIndex];
-                sessionStorage.setItem('pos_user_aktif', JSON.stringify(userAktif));
+                // Jika Owner mengedit akunnya sendiri, update tampilan header & simpan sesi baru
+                if(targetUser.pinHash === userAktif.pinHash) {
+                    userAktif = targetUser;
+                    sessionStorage.setItem('pos_user_aktif', JSON.stringify(userAktif));
+                    document.getElementById('active-user-badge').innerText = `${userAktif.nama} (${userAktif.role})`;
+                    document.getElementById('dash-user').innerText = userAktif.nama;
+                }
                 
-                // Simpan ke Firebase Database
                 await saveDatabase();
-                
-                // Perbarui tampilan Nama di Layar (Header & Dashboard)
-                document.getElementById('active-user-badge').innerText = `${userAktif.nama} (${userAktif.role})`;
-                document.getElementById('dash-user').innerText = userAktif.nama;
-                
-                Swal.fire('Sukses', 'Profil dan PIN berhasil diperbarui!', 'success');
+                Swal.fire('Sukses', 'Profil berhasil diperbarui!', 'success');
+                // Refresh list karyawan di tabel
+                if(document.getElementById('sec-karyawan').classList.contains('active')) renderKaryawan();
             }
         }
+
+        async function simpanPengaturanStruk() { DB.settingStruk.namaToko = document.getElementById('setting-struk-nama').value; DB.settingStruk.alamat = document.getElementById('setting-struk-alamat').value; DB.settingStruk.footer = document.getElementById('setting-struk-footer').value; await saveDatabase(); document.getElementById('header-app-name').innerText = DB.settingStruk.namaToko; Swal.fire('Sukses', 'Disimpan!', 'success'); }
+        async function gantiModePrinter() { DB.settingPrinter = document.getElementById('setting-printer-mode').value; await saveDatabase(); document.getElementById('printer-help-browser').style.display = DB.settingPrinter === 'browser' ? 'block' : 'none'; document.getElementById('printer-help-rawbt').style.display = DB.settingPrinter === 'rawbt' ? 'block' : 'none'; document.getElementById('printer-help-bluetooth').style.display = DB.settingPrinter === 'bluetooth' ? 'block' : 'none'; }
+        function testCetakPrinter() { if(DB.settingPrinter === 'browser') window.print(); else if(DB.settingPrinter === 'bluetooth') generateTeksStrukBluetooth({idNota: 'TEST', kasir: userAktif.nama, waktu: new Date().toLocaleString('id-ID'), items: [{nama: 'TEST PRINTER', qty: 1, harga: 0, catatan: ''}], totalNota: 0, bayar: 0, metode: 'Tunai'}); }
 
         function renderKaryawan() { 
             let tbody = document.querySelector('#karyawan-table tbody'); let htmlTemp = '';
