@@ -1088,5 +1088,34 @@
 
         setInterval(() => { let now = new Date(); let t = document.getElementById('clock-time'); let d = document.getElementById('clock-date'); if(t) t.innerText = now.toLocaleTimeString('id-ID', { hour12: false }); if(d) d.innerText = now.toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }); }, 1000);
     </script>
+
+<!-- FIREBASE SDK -->
+<script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
+
+<script>
+  // 1. KONFIGURASI FIREBASE ANDA
+  const firebaseConfig = {
+    apiKey: "AIzaSyDSJbIrL7D5N3KnE8mzwi6pxusG3l27ack",
+    authDomain: "kasir-kantin50.firebaseapp.com",
+    projectId: "kasir-kantin50",
+    storageBucket: "kasir-kantin50.firebasestorage.app",
+    messagingSenderId: "506660527827",
+    appId: "1:506660527827:web:c554e2b19a100a7d3c3e26",
+    measurementId: "G-P27Q0TM517"
+  };
+
+  // 2. INISIALISASI FIREBASE & FIRESTORE
+  firebase.initializeApp(firebaseConfig);
+  const db = firebase.firestore();
+
+  // 3. AKTIFKAN MODE OFFLINE (KHUSUS PWA)
+  db.enablePersistence().catch((err) => {
+      console.error("Gagal mengaktifkan mode offline:", err);
+  });
+</script>
+
+
+    
 </body>
 </html>
