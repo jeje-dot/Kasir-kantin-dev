@@ -174,7 +174,6 @@
             <h2>OTENTIKASI SISTEM</h2>
             <p style="font-size: 13px; color: #94a3b8; margin-bottom: 25px;">Sistem POS Pujasera Terintegrasi</p>
             
-            <!-- Diubah menggunakan kontrol murni JavaScript untuk mencegah form reload siluman -->
             <div onkeypress="if(event.key === 'Enter') actionLogin();">
                 <input type="password" id="input-pin" class="pin-input" placeholder="••••••" maxlength="6" autofocus autocomplete="off" disabled>
                 <button type="button" class="btn-login" id="btn-login" onclick="actionLogin()" disabled>Memuat Data... <i class="fas fa-spinner fa-spin" style="margin-left: 8px;"></i></button>
@@ -668,8 +667,9 @@
         </main>
     </div>
 
-    <!-- FIREBASE SDK -->
+    <!-- FIREBASE SDK (DITAMBAHKAN AUTHENTICATION) -->
     <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
 
     <script>
@@ -686,6 +686,7 @@
 
       firebase.initializeApp(firebaseConfig);
       const db = firebase.firestore();
+      const auth = firebase.auth(); // Inisialisasi Auth
 
       db.enablePersistence().catch((err) => {
           console.error("Gagal mengaktifkan mode offline:", err);
@@ -798,6 +799,11 @@
                     }
                 }, (error) => {
                     console.error("Gagal mendengarkan Firebase:", error);
+                    // UI Penanganan Error Firebase Permissions
+                    document.getElementById('input-pin').disabled = true;
+                    document.getElementById('btn-login').disabled = true;
+                    document.getElementById('btn-login').innerHTML = `<i class="fas fa-ban"></i> Akses Ditolak (Rules)`;
+                    Swal.fire('Database Terkunci', 'Firebase menolak akses baca. Pastikan Anda telah mengaktifkan mode Anonymous Sign-In di pengaturan Authentication Firebase Anda.', 'error');
                 });
             } catch (error) { console.error("Gagal inisialisasi Firebase:", error); }
         }
@@ -812,9 +818,23 @@
             } catch (error) { console.error("Gagal menyimpan ke Firebase:", error); }
         }
 
-        window.onload = async () => { await initDatabase(); };
+        // PENAMBAHAN PROSES OTENTIKASI ANONIM SEBELUM LOAD DATA
+        window.onload = () => { 
+            auth.signInAnonymously()
+                .then(() => {
+                    // Jika sukses otentikasi (meski di latar belakang), panggil data
+                    initDatabase();
+                })
+                .catch((error) => {
+                    console.error("Gagal Otentikasi Anonim:", error);
+                    document.getElementById('input-pin').disabled = true;
+                    document.getElementById('btn-login').disabled = true;
+                    document.getElementById('btn-login').innerHTML = `<i class="fas fa-exclamation-triangle"></i> Gagal Memuat Data`;
+                    Swal.fire('Koneksi Ditolak', 'Sistem gagal melakukan otentikasi ke server. Pastikan fitur "Anonymous Auth" di konsol Firebase Anda sudah diaktifkan.', 'error');
+                });
+        };
 
-        // FUNGSI LOGIN (SUDAH DIPERBAIKI)
+        // FUNGSI LOGIN 
         function actionLogin() {
             if (isLocked || userAktif) return false;
             let pinInputEl = document.getElementById('input-pin'); 
