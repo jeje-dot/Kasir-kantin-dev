@@ -174,10 +174,11 @@
             <h2>OTENTIKASI SISTEM</h2>
             <p style="font-size: 13px; color: #94a3b8; margin-bottom: 25px;">Sistem POS Pujasera Terintegrasi</p>
             
-            <form onsubmit="event.preventDefault(); actionLogin(); return false;">
+            <!-- Diubah menggunakan kontrol murni JavaScript untuk mencegah form reload siluman -->
+            <div onkeypress="if(event.key === 'Enter') actionLogin();">
                 <input type="password" id="input-pin" class="pin-input" placeholder="••••••" maxlength="6" autofocus autocomplete="off" disabled>
-                <button type="submit" class="btn-login" id="btn-login" disabled>Memuat Data... <i class="fas fa-spinner fa-spin" style="margin-left: 8px;"></i></button>
-            </form>
+                <button type="button" class="btn-login" id="btn-login" onclick="actionLogin()" disabled>Memuat Data... <i class="fas fa-spinner fa-spin" style="margin-left: 8px;"></i></button>
+            </div>
         </div>
     </div>
 
@@ -466,8 +467,8 @@
                     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; flex-wrap: wrap; gap: 8px;">
                         <h4 style="color: var(--primary); font-size: 14px;">Form Tambah Menu Manual</h4>
                         <div style="display: flex; gap: 8px;">
-                            <button class="btn-action btn-outline" onclick="downloadTemplateCSV('stok')"><i class="fas fa-download"></i> Template</button>
-                            <button class="btn-action" style="background: var(--accent);" onclick="document.getElementById('import-stok').click()"><i class="fas fa-upload"></i> Import</button>
+                            <button class="btn-action btn-outline" onclick="downloadTemplateCSV('stok')"><i class="fas fa-download"></i> Template CSV (Tanpa URL)</button>
+                            <button class="btn-action" style="background: var(--accent);" onclick="document.getElementById('import-stok').click()"><i class="fas fa-upload"></i> Import CSV</button>
                             <input type="file" id="import-stok" class="hide-file" accept=".csv" onchange="importCSV(event, 'stok')">
                         </div>
                     </div>
@@ -497,7 +498,7 @@
                     <h4 style="margin-bottom: 12px; color: var(--text-muted); text-transform: uppercase; font-size: 11px; font-weight: 800;">Daftar Menu Saat Ini</h4>
                     <div style="overflow-x: auto;">
                         <table id="stock-table">
-                            <thead><tr><th>ID</th><th>Nama Menu</th><th>Kategori</th><th>Kios Tenant</th><th>Harga</th><th>Stok</th><th>Aksi</th></tr></thead>
+                            <thead><tr><th>ID</th><th>Nama Menu</th><th>Gambar</th><th>Kategori</th><th>Kios Tenant</th><th>Harga</th><th>Stok</th><th>Aksi</th></tr></thead>
                             <tbody></tbody>
                         </table>
                     </div>
@@ -596,22 +597,44 @@
                         <button class="btn-action" style="background: var(--success); width: 100%; justify-content: center; padding: 12px;" onclick="simpanPengaturanStruk()"><i class="fas fa-save"></i> Simpan Desain</button>
                     </div>
 
-                    <!-- BOX INTEGRASI MIDTRANS (FITUR BARU) -->
-                    <div id="setting-midtrans" style="flex: 1; background: var(--card-bg); padding: 20px; border-radius: 12px; border: 1px solid var(--border); min-width: 280px; display: none;">
-                        <h4 style="margin-bottom: 15px; color: var(--primary); display: flex; align-items: center; gap: 8px; font-size: 14px;"><i class="fas fa-qrcode"></i> API Midtrans (QRIS Dinamis)</h4>
+                    <!-- BOX PENGATURAN QRIS (STATIS/DINAMIS) -->
+                    <div id="setting-qris" style="flex: 1; background: var(--card-bg); padding: 20px; border-radius: 12px; border: 1px solid var(--border); min-width: 280px; display: none;">
+                        <h4 style="margin-bottom: 15px; color: var(--primary); display: flex; align-items: center; gap: 8px; font-size: 14px;"><i class="fas fa-qrcode"></i> Pengaturan Metode QRIS</h4>
                         <div class="form-group">
-                            <label>Server Key Midtrans:</label>
-                            <input type="password" id="setting-midtrans-key" class="form-control" placeholder="SB-Mid-server-xxx...">
-                        </div>
-                        <div class="form-group">
-                            <label>Mode Environment:</label>
-                            <select id="setting-midtrans-env" class="form-control">
-                                <option value="sandbox">Sandbox (Uji Coba)</option>
-                                <option value="production">Production (Live)</option>
+                            <label>Mode QRIS:</label>
+                            <select id="qris-mode-select" class="form-control" onchange="toggleQrisSettings()">
+                                <option value="statis">QRIS Statis (Upload Gambar)</option>
+                                <option value="midtrans">QRIS Dinamis (Midtrans API)</option>
                             </select>
                         </div>
-                        <button class="btn-action" style="background: var(--accent); width: 100%; justify-content: center; padding: 12px;" onclick="simpanPengaturanMidtrans()"><i class="fas fa-save"></i> Simpan API Key</button>
-                        <div style="margin-top: 10px; font-size: 10px; color: var(--danger); line-height: 1.4;">*Isi kunci API Midtrans Anda untuk generate kode QRIS secara otomatis saat checkout.</div>
+
+                        <!-- Opsi Statis -->
+                        <div id="qris-setup-statis">
+                            <div class="form-group">
+                                <label>Upload Gambar QRIS Toko Anda:</label>
+                                <input type="file" id="qris-static-file" accept="image/*" class="form-control" style="padding: 6px;">
+                            </div>
+                            <div id="qris-static-preview" style="width:120px; height:120px; border:1px dashed var(--border); border-radius:8px; margin-bottom:12px; display:flex; justify-content:center; align-items:center; overflow:hidden; background: var(--light);">
+                                <span style="font-size:10px; color:var(--text-muted);">Belum Ada QRIS</span>
+                            </div>
+                        </div>
+
+                        <!-- Opsi Dinamis -->
+                        <div id="qris-setup-midtrans" style="display:none;">
+                            <div class="form-group">
+                                <label>Server Key Midtrans:</label>
+                                <input type="password" id="setting-midtrans-key" class="form-control" placeholder="SB-Mid-server-xxx...">
+                            </div>
+                            <div class="form-group">
+                                <label>Mode Environment:</label>
+                                <select id="setting-midtrans-env" class="form-control">
+                                    <option value="sandbox">Sandbox (Uji Coba)</option>
+                                    <option value="production">Production (Live)</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <button class="btn-action" style="background: var(--accent); width: 100%; justify-content: center; padding: 12px;" onclick="simpanPengaturanQris()"><i class="fas fa-save"></i> Simpan Konfigurasi QRIS</button>
                     </div>
 
                     <div style="flex: 1; background: var(--card-bg); padding: 20px; border-radius: 12px; border: 1px solid var(--border); min-width: 280px;">
@@ -712,7 +735,10 @@
             return CryptoJS.SHA256(pin).toString();
         }
 
-        let DB = { kiosList: [], produkList: [], riwayatPenjualan: [], karyawanList: [], settingStruk: {}, kartuPelanggan: [], settingPrinter: 'browser', printerName: '', settingMidtrans: { serverKey: '', isProduction: false } };
+        let DB = { 
+            kiosList: [], produkList: [], riwayatPenjualan: [], karyawanList: [], settingStruk: {}, kartuPelanggan: [], settingPrinter: 'browser', printerName: '', 
+            settingQris: { mode: 'statis', staticImage: '', midtransKey: '', isProduction: false } 
+        };
         let userAktif = null; let kiosAktifPOS = ""; let keranjang = []; 
         let kategoriAktif = 'Semua'; let currentQueueFilter = 'ALL'; 
         let isLocked = false; let salahLogCount = 0; let isFirstLoad = true;
@@ -730,7 +756,7 @@
                         DB.kartuPelanggan = data.kartuPelanggan || [];
                         DB.settingPrinter = data.settingPrinter || 'browser';
                         DB.printerName = data.printerName || '';
-                        DB.settingMidtrans = data.settingMidtrans || { serverKey: '', isProduction: false };
+                        DB.settingQris = data.settingQris || { mode: 'statis', staticImage: '', midtransKey: '', isProduction: false };
                     } else {
                         if (isFirstLoad) {
                             DB.kiosList = ["Kios Aneka Bakso", "Kios Minuman Segar"];
@@ -741,7 +767,7 @@
                             DB.riwayatPenjualan = []; DB.kartuPelanggan = [];
                             DB.settingStruk = { namaToko: "PUJASERA SEJAHTERA", alamat: "Jl. Raya Kuliner No. 123", footer: "Terima Kasih Atas Kunjungan Anda!" };
                             DB.settingPrinter = 'browser'; DB.printerName = "";
-                            DB.settingMidtrans = { serverKey: '', isProduction: false };
+                            DB.settingQris = { mode: 'statis', staticImage: '', midtransKey: '', isProduction: false };
                             DB.karyawanList = [
                                 { nama: "Admin Pusat", pinHash: hashPIN("123456"), pinAsli: "123456", role: "Owner", kios: "SEMUA KIOS" },
                                 { nama: "Kasir Bakso", pinHash: hashPIN("111111"), pinAsli: "111111", role: "Tenant", kios: "Kios Aneka Bakso" }
@@ -762,7 +788,6 @@
                             kiosAktifPOS = userAktif.role === 'Owner' ? DB.kiosList[0] : userAktif.kios;
                             lanjutkanLogin();
                         } else {
-                            // Buka kunci tombol login setelah DB sukses dimuat dan tidak ada sesi yang tersimpan
                             document.getElementById('input-pin').disabled = false;
                             document.getElementById('btn-login').disabled = false;
                             document.getElementById('btn-login').innerHTML = `LOGIN <i class="fas fa-arrow-right" style="margin-left: 8px;"></i>`;
@@ -782,33 +807,45 @@
                 await db.collection("pos_data").doc("pujasera_pusat").set({
                     kiosList: DB.kiosList, produkList: DB.produkList, riwayatPenjualan: DB.riwayatPenjualan,
                     karyawanList: DB.karyawanList, settingStruk: DB.settingStruk, kartuPelanggan: DB.kartuPelanggan,
-                    settingPrinter: DB.settingPrinter, printerName: DB.printerName, settingMidtrans: DB.settingMidtrans
+                    settingPrinter: DB.settingPrinter, printerName: DB.printerName, settingQris: DB.settingQris
                 });
             } catch (error) { console.error("Gagal menyimpan ke Firebase:", error); }
         }
 
         window.onload = async () => { await initDatabase(); };
 
+        // FUNGSI LOGIN (SUDAH DIPERBAIKI)
         function actionLogin() {
             if (isLocked || userAktif) return false;
-            let pinInputEl = document.getElementById('input-pin'); let pinInput = pinInputEl.value.trim();
+            let pinInputEl = document.getElementById('input-pin'); 
+            let pinInput = pinInputEl.value.trim();
             if(!pinInput) return false;
             
-            let inputHash = hashPIN(pinInput); let user = DB.karyawanList.find(u => u.pinHash === inputHash);
+            let inputHash = hashPIN(pinInput); 
+            let user = DB.karyawanList.find(u => u.pinHash === inputHash);
+            
             pinInputEl.value = ''; 
+            pinInputEl.blur(); // Hilangkan fokus agar tidak tertekan 2 kali
 
             if(user) {
                 salahLogCount = 0; userAktif = user; 
                 sessionStorage.setItem('pos_user_aktif', JSON.stringify(user)); 
-                kiosAktifPOS = user.role === 'Owner' ? DB.kiosList[0] : user.kios; lanjutkanLogin();
+                kiosAktifPOS = user.role === 'Owner' ? DB.kiosList[0] : user.kios; 
+                lanjutkanLogin();
             } else {
                 salahLogCount++;
                 if(salahLogCount >= 3) { triggerLockout(); } 
                 else { 
-                    Swal.fire({ icon: 'error', title: 'PIN Salah', text: `PIN tidak terdaftar. Sisa percobaan: ${3 - salahLogCount}`, confirmButtonColor: '#ef4444' }).then(() => { pinInputEl.focus(); }); 
+                    Swal.fire({ 
+                        icon: 'error', 
+                        title: 'PIN Salah', 
+                        text: `PIN tidak terdaftar. Sisa percobaan: ${3 - salahLogCount}`, 
+                        confirmButtonColor: '#ef4444' 
+                    }).then(() => { 
+                        setTimeout(() => { pinInputEl.focus(); }, 100); 
+                    }); 
                 }
             }
-            return false; 
         }
 
         function triggerLockout() {
@@ -836,13 +873,13 @@
                 document.getElementById('owner-card-list-container').style.display = 'block'; document.getElementById('btn-reset-riwayat').style.display = 'inline-flex';
                 document.getElementById('setting-kop-struk').style.display = 'block'; 
                 document.getElementById('setting-profil-akun').style.display = 'block';
-                document.getElementById('setting-midtrans').style.display = 'block';
+                document.getElementById('setting-qris').style.display = 'block';
             } else {
                 document.getElementById('menu-owner-only').style.display = 'none'; document.querySelectorAll('.menu-owner-restricted').forEach(el => el.style.display = 'none');
                 document.getElementById('owner-card-list-container').style.display = 'none'; document.getElementById('btn-reset-riwayat').style.display = 'none'; 
                 document.getElementById('setting-kop-struk').style.display = 'none'; 
                 document.getElementById('setting-profil-akun').style.display = 'none';
-                document.getElementById('setting-midtrans').style.display = 'none'; 
+                document.getElementById('setting-qris').style.display = 'none'; 
             }
             buildDropdowns(); muatDataPengaturanUI(); gantiKiosPOS(); switchMenu('dashboard');
             if(DB.settingPrinter === 'bluetooth') autoConnectPrinter();
@@ -930,8 +967,13 @@
             document.getElementById('dash-order-selesai').innerHTML = listSelesai || '<div style="text-align:center; color:gray; padding:15px 10px; font-size:12px;">Tidak ada pesanan</div>';
         }
 
+        // FUNGSI CSV SUDAH DIHILANGKAN KOLOM URL GAMBAR-NYA
         function downloadCSV(dataArray, filename) { let csvContent = "data:text/csv;charset=utf-8,"; dataArray.forEach(row => { csvContent += row.join(",") + "\r\n"; }); let link = document.createElement("a"); link.setAttribute("href", encodeURI(csvContent)); link.setAttribute("download", filename); document.body.appendChild(link); link.click(); document.body.removeChild(link); }
-        function downloadTemplateCSV(type) { if(type === 'stok') downloadCSV([["ID_Menu", "Nama_Menu", "Nama_Kios", "Harga_Jual", "Stok_Awal", "Kategori", "URL_Gambar"], ["MIE01", "Mie Ayam Spesial", "Kios Aneka Bakso", "20000", "50", "Makanan", "https://example.com/gambar.jpg"]], "Template_Stok_Menu.csv"); if(type === 'kios') downloadCSV([["Nama_Kios"], ["Kios Ayam Geprek"]], "Template_Data_Kios.csv"); if(type === 'karyawan') downloadCSV([["Nama_Karyawan", "PIN_Angka", "Nama_Kios_Akses"], ["Budi Santoso", "123123", "Kios Ayam Geprek"]], "Template_Karyawan.csv"); }
+        function downloadTemplateCSV(type) { 
+            if(type === 'stok') downloadCSV([["ID_Menu", "Nama_Menu", "Nama_Kios", "Harga_Jual", "Stok_Awal", "Kategori"], ["MIE01", "Mie Ayam Spesial", "Kios Aneka Bakso", "20000", "50", "Makanan"]], "Template_Stok_Menu.csv"); 
+            if(type === 'kios') downloadCSV([["Nama_Kios"], ["Kios Ayam Geprek"]], "Template_Data_Kios.csv"); 
+            if(type === 'karyawan') downloadCSV([["Nama_Karyawan", "PIN_Angka", "Nama_Kios_Akses"], ["Budi Santoso", "123123", "Kios Ayam Geprek"]], "Template_Karyawan.csv"); 
+        }
 
         async function importCSV(event, type) {
             let file = event.target.files[0]; if(!file) return;
@@ -940,7 +982,13 @@
                 let lines = e.target.result.split('\n'); let count = 0;
                 for(let i=1; i<lines.length; i++){
                     if(!lines[i].trim()) continue; let cols = lines[i].split(',').map(c => c.trim().replace(/"/g, ''));
-                    if(type === 'stok' && cols.length >= 5) { let [id, nama, kios, harga, stok, kategori, gambar] = cols; if(id && DB.kiosList.includes(kios) && !DB.produkList.find(p=>p.id===id)) { DB.produkList.push({id, nama, kios, harga:parseInt(harga)||0, stok:parseInt(stok)||0, kategori: kategori || "Makanan", gambar: gambar || ""}); count++; } }
+                    // Import Stok (Disesuaikan jadi 6 kolom, tanpa URL)
+                    if(type === 'stok' && cols.length >= 5) { 
+                        let [id, nama, kios, harga, stok, kategori] = cols; 
+                        if(id && DB.kiosList.includes(kios) && !DB.produkList.find(p=>p.id===id)) { 
+                            DB.produkList.push({id, nama, kios, harga:parseInt(harga)||0, stok:parseInt(stok)||0, kategori: kategori || "Makanan", gambar: ""}); count++; 
+                        } 
+                    }
                     if(type === 'kios' && cols.length >= 1) { let n = cols[0]; if(n && !DB.kiosList.includes(n)) { DB.kiosList.push(n); count++; } }
                     if(type === 'karyawan' && cols.length >= 3) { let [nama, pin, kios] = cols; if(nama && pin && DB.kiosList.includes(kios)) { DB.karyawanList.push({nama, pinHash:hashPIN(pin), pinAsli: pin, role:'Tenant', kios}); count++; } }
                 }
@@ -1100,19 +1148,29 @@
             if(typeof Swal !== 'undefined') Swal.fire({ icon: 'success', title: 'Transaksi Sukses!', html: `Kembalian: <br><span style="font-size:24px; font-weight:900; color:var(--success);">Rp ${kembali.toLocaleString('id-ID')}</span>` });
         }
 
-        // FUNGSI BARU: QRIS MIDTRANS DINAMIS
+        // FUNGSI QRIS (HILANGKAN DUMMY, PAKAI STATIS/DINAMIS ASLI)
         async function bayarPakaiQRIS() {
             if(keranjang.length === 0) return Swal.fire('Error', 'Keranjang masih kosong!', 'error');
             let total = keranjang.reduce((sum, item) => sum + (item.harga * item.qty), 0);
             
-            let isDummy = true;
-            let qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=DUMMY-QRIS-${total}`;
+            if (!DB.settingQris) DB.settingQris = { mode: 'statis', staticImage: '' };
+            let qrUrl = '';
+            let pesanAtas = '';
 
-            if(DB.settingMidtrans && DB.settingMidtrans.serverKey) {
+            if (DB.settingQris.mode === 'statis') {
+                if (!DB.settingQris.staticImage) {
+                    return Swal.fire('QRIS Belum Diatur', 'Silakan upload gambar QRIS Statis Anda di menu Pengaturan terlebih dahulu.', 'warning');
+                }
+                qrUrl = DB.settingQris.staticImage;
+                pesanAtas = 'Scan QRIS berikut & pastikan nominal sesuai';
+            } else {
+                // MIDTRANS
+                if(!DB.settingQris.midtransKey) return Swal.fire('Midtrans Belum Diatur', 'API Key Midtrans kosong. Silakan isi di Pengaturan.', 'warning');
+                
                 Swal.fire({ title: 'Membuat QRIS...', text: 'Menghubungkan ke API Midtrans', allowOutsideClick: false, didOpen: () => { Swal.showLoading(); }});
                 try {
-                    let envUrl = DB.settingMidtrans.isProduction ? 'https://api.midtrans.com/v2/charge' : 'https://api.sandbox.midtrans.com/v2/charge';
-                    let auth = btoa(DB.settingMidtrans.serverKey + ':');
+                    let envUrl = DB.settingQris.isProduction ? 'https://api.midtrans.com/v2/charge' : 'https://api.sandbox.midtrans.com/v2/charge';
+                    let auth = btoa(DB.settingQris.midtransKey + ':');
                     let orderId = "QRIS-" + Date.now();
                     
                     let res = await fetch(envUrl, {
@@ -1124,25 +1182,25 @@
                     let data = await res.json();
                     if(data.status_code === '201' && data.actions && data.actions.length > 0) {
                         qrUrl = data.actions[0].url; 
-                        isDummy = false;
+                        pesanAtas = 'Scan QRIS Dinamis via E-Wallet / M-Banking';
                     } else {
                         throw new Error(data.status_message || "Gagal membuat QRIS.");
                     }
                 } catch (e) {
-                    return Swal.fire('Gagal Terhubung', 'Gagal memanggil API Midtrans. Pastikan Kunci Server benar atau gunakan proxy jika browser memblokir permintaan lintas asal (CORS). Detail: ' + e.message, 'error');
+                    return Swal.fire('Gagal Terhubung', 'Gagal memanggil API Midtrans. Pastikan Server Key valid dan mendukung QRIS: ' + e.message, 'error');
                 }
             }
 
             Swal.fire({
                 title: 'Pembayaran QRIS',
                 html: `
-                    <p style="font-size: 13px; color: var(--text-muted);">${isDummy ? 'QRIS Sementara (Mode Dummy)' : 'Scan QRIS via E-Wallet / M-Banking Anda'}</p>
+                    <p style="font-size: 13px; color: var(--text-muted);">${pesanAtas}</p>
                     <div style="background: white; padding: 15px; border-radius: 10px; display: inline-block; margin: 10px 0; border: 2px dashed var(--accent);">
                         <img src="${qrUrl}" alt="QRIS" style="width: 200px; height: 200px; object-fit: contain;">
                     </div>
                     <h3 style="color: var(--primary); font-weight: 900;">Total: Rp ${total.toLocaleString('id-ID')}</h3>
                     <p style="font-size: 11px; color: var(--danger);">*Pastikan pembayaran telah masuk ke mutasi sebelum klik Konfirmasi.</p>
-                `, showCancelButton: true, confirmButtonText: '<i class="fas fa-check-circle"></i> Dana Sudah Masuk', cancelButtonText: 'Batal', confirmButtonColor: 'var(--success)'
+                `, showCancelButton: true, confirmButtonText: '<i class="fas fa-check-circle"></i> Dana Masuk', cancelButtonText: 'Batal', confirmButtonColor: 'var(--success)'
             }).then((result) => { 
                 if (result.isConfirmed) { 
                     prosesCheckout(total, total, 'QRIS'); 
@@ -1267,10 +1325,45 @@
 
         function renderStok() {
             let tbody = document.querySelector('#stock-table tbody'); let data = userAktif.role === 'Owner' ? DB.produkList : DB.produkList.filter(p => p.kios === userAktif.kios); let htmlTemp = '';
-            data.forEach(p => { htmlTemp += `<tr><td><code>${p.id}</code></td><td><b>${p.nama}</b></td><td>${p.kategori}</td><td><span class="badge-kios">${p.kios}</span></td><td>Rp ${p.harga.toLocaleString('id-ID')}</td><td><input type="number" value="${p.stok}" class="form-control" style="width:70px; padding:4px;" onchange="updateStokCepat('${p.id}', '${p.kios}', this.value)"></td><td><button class="btn-action" style="background:var(--danger); padding:4px 10px;" onclick="hapusBarang('${p.id}', '${p.kios}')"><i class="fas fa-trash"></i></button></td></tr>`; });
+            data.forEach(p => { 
+                let imgPreview = p.gambar ? `<img src="${p.gambar}" style="width:40px; height:40px; object-fit:cover; border-radius:4px;">` : `<div style="width:40px; height:40px; background:#e2e8f0; display:flex; justify-content:center; align-items:center; border-radius:4px;"><i class="fas fa-image" style="color:#94a3b8;"></i></div>`;
+                htmlTemp += `<tr>
+                    <td><code>${p.id}</code></td>
+                    <td><b>${p.nama}</b></td>
+                    <td>${imgPreview}</td>
+                    <td>${p.kategori}</td>
+                    <td><span class="badge-kios">${p.kios}</span></td>
+                    <td>Rp ${p.harga.toLocaleString('id-ID')}</td>
+                    <td><input type="number" value="${p.stok}" class="form-control" style="width:70px; padding:4px;" onchange="updateStokCepat('${p.id}', '${p.kios}', this.value)"></td>
+                    <td>
+                        <button class="btn-action btn-outline" style="padding:4px 8px; margin-bottom:4px;" onclick="uploadGambarBarang('${p.id}', '${p.kios}')"><i class="fas fa-upload"></i> Foto</button>
+                        <button class="btn-action" style="background:var(--danger); padding:4px 10px;" onclick="hapusBarang('${p.id}', '${p.kios}')"><i class="fas fa-trash"></i></button>
+                    </td>
+                </tr>`; 
+            });
             tbody.innerHTML = htmlTemp;
         }
         
+        async function uploadGambarBarang(id, kios) {
+            const { value: file } = await Swal.fire({
+                title: 'Upload Gambar Menu',
+                input: 'file',
+                inputAttributes: { 'accept': 'image/*', 'aria-label': 'Upload gambar menu' }
+            });
+
+            if (file) {
+                let base64 = await prosesGambarKeBase64(file);
+                let p = DB.produkList.find(x => x.id === id && x.kios === kios);
+                if(p) {
+                    p.gambar = base64;
+                    await saveDatabase();
+                    Swal.fire('Sukses', 'Gambar berhasil diupload', 'success');
+                    renderStok();
+                    filterProduk(document.getElementById('input-barcode').value);
+                }
+            }
+        }
+
         function prosesGambarKeBase64(file) {
             return new Promise((resolve, reject) => {
                 let reader = new FileReader();
@@ -1316,9 +1409,7 @@
             Swal.fire({ title: 'Menyimpan...', text: 'Memproses data dan gambar', allowOutsideClick: false, didOpen: () => { Swal.showLoading() } });
 
             let gambarBase64 = "";
-            if (file) {
-                gambarBase64 = await prosesGambarKeBase64(file);
-            }
+            if (file) { gambarBase64 = await prosesGambarKeBase64(file); }
 
             DB.produkList.push({ id, nama, harga, stok, kios, kategori, gambar: gambarBase64 }); 
             await saveDatabase(); 
@@ -1355,9 +1446,18 @@
             document.getElementById('setting-printer-mode').value = DB.settingPrinter; 
             gantiModePrinter(); 
             
-            // Pengaturan Midtrans
-            document.getElementById('setting-midtrans-key').value = DB.settingMidtrans.serverKey || '';
-            document.getElementById('setting-midtrans-env').value = DB.settingMidtrans.isProduction ? 'production' : 'sandbox';
+            // Pengaturan QRIS
+            if(!DB.settingQris) DB.settingQris = { mode: 'statis', staticImage: '', midtransKey: '', isProduction: false };
+            document.getElementById('qris-mode-select').value = DB.settingQris.mode || 'statis';
+            document.getElementById('setting-midtrans-key').value = DB.settingQris.midtransKey || '';
+            document.getElementById('setting-midtrans-env').value = DB.settingQris.isProduction ? 'production' : 'sandbox';
+            
+            if (DB.settingQris.staticImage) {
+                document.getElementById('qris-static-preview').innerHTML = `<img src="${DB.settingQris.staticImage}" style="width:100%; height:100%; object-fit:contain;">`;
+            } else {
+                document.getElementById('qris-static-preview').innerHTML = `<span style="font-size:10px; color:var(--text-muted);">Belum Ada QRIS</span>`;
+            }
+            toggleQrisSettings();
 
             if(userAktif && userAktif.role === 'Owner') {
                 let userSelect = document.getElementById('profil-user-select');
@@ -1368,12 +1468,26 @@
             }
         }
 
-        async function simpanPengaturanMidtrans() {
-            if(!DB.settingMidtrans) DB.settingMidtrans = {};
-            DB.settingMidtrans.serverKey = document.getElementById('setting-midtrans-key').value.trim();
-            DB.settingMidtrans.isProduction = (document.getElementById('setting-midtrans-env').value === 'production');
+        function toggleQrisSettings() {
+            let mode = document.getElementById('qris-mode-select').value;
+            document.getElementById('qris-setup-statis').style.display = mode === 'statis' ? 'block' : 'none';
+            document.getElementById('qris-setup-midtrans').style.display = mode === 'midtrans' ? 'block' : 'none';
+        }
+
+        async function simpanPengaturanQris() {
+            if(!DB.settingQris) DB.settingQris = {};
+            DB.settingQris.mode = document.getElementById('qris-mode-select').value;
+            DB.settingQris.midtransKey = document.getElementById('setting-midtrans-key').value.trim();
+            DB.settingQris.isProduction = (document.getElementById('setting-midtrans-env').value === 'production');
+
+            let fileInput = document.getElementById('qris-static-file');
+            if (fileInput.files && fileInput.files[0]) {
+                DB.settingQris.staticImage = await prosesGambarKeBase64(fileInput.files[0]);
+                document.getElementById('qris-static-preview').innerHTML = `<img src="${DB.settingQris.staticImage}" style="width:100%; height:100%; object-fit:contain;">`;
+            }
+
             await saveDatabase();
-            Swal.fire('Sukses', 'Kunci API Midtrans berhasil disimpan!', 'success');
+            Swal.fire('Sukses', 'Pengaturan QRIS berhasil disimpan!', 'success');
         }
         
         function loadProfilTerpilih() {
