@@ -479,7 +479,6 @@
                             <option value="Snack">Snack</option>
                         </select>
                         
-                        <!-- FITUR BARU: TOMBOL UPLOAD GAMBAR LOKAL -->
                         <div style="flex: 1.2; min-width: 120px; display: flex; align-items: center; background: white; border: 1px solid var(--border); border-radius: 8px; padding: 0 8px;">
                             <i class="fas fa-image" style="color: var(--text-muted); margin-right: 5px;"></i>
                             <input type="file" id="new-img-file" accept="image/png, image/jpeg, image/jpg" style="width: 100%; font-size: 11px; padding: 8px 0; outline: none; background: transparent; border: none; cursor: pointer;">
@@ -777,7 +776,9 @@
             } else {
                 salahLogCount++;
                 if(salahLogCount >= 3) { triggerLockout(); } 
-                else { Swal.fire({ icon: 'error', title: 'PIN Salah', text: `PIN tidak terdaftar. Sisa percobaan: ${3 - salahLogCount}`, confirmButtonColor: '#ef4444' }).then(() => { pinInputEl.focus(); }); }
+                else { 
+                    Swal.fire({ icon: 'error', title: 'PIN Salah', text: `PIN tidak terdaftar. Sisa percobaan: ${3 - salahLogCount}`, confirmButtonColor: '#ef4444' }).then(() => { pinInputEl.focus(); }); 
+                }
             }
             return false; 
         }
@@ -1096,8 +1097,9 @@
                 <div class="receipt-row"><span>Meja: ${trx.meja}</span><span>Byr: ${trx.metode}</span></div>
                 <div class="receipt-line"></div>${itemHtml}<div class="receipt-line"></div>
                 <div class="receipt-row" style="font-weight: bold; font-size: 13px;"><span>TOTAL</span><span>Rp ${trx.totalNota.toLocaleString('id-ID')}</span></div>
-                <div class="receipt-row"><span>Bayar</span><span>Rp ${trx.bayar.toLocaleString('id-ID')}</span></div>
-                <div class="receipt-row"><span>Kembali</span><span>Rp ${(trx.bayar - trx.totalNota).toLocaleString('id-ID')}</span></div>
+                <div class="receipt-row"><span>BAYAR</span><span>Rp ${trx.bayar.toLocaleString('id-ID')}</span></div>
+                <div class="receipt-row"><span>KEMBALI</span><span>Rp ${(trx.bayar - trx.totalNota).toLocaleString('id-ID')}</span></div>
+                <div class="receipt-row" style="font-weight: bold; margin-top: 4px;"><span>METODE</span><span>${trx.metode}</span></div>
                 <div class="receipt-line"></div><div style="text-align: center; font-size:10px; margin-top: 8px;">${DB.settingStruk.footer}</div>`;
             window.print();
         }
@@ -1106,7 +1108,7 @@
             let formatLine = (left, right) => { let l = String(left); let r = String(right); let space = 32 - l.length - r.length; return l + ' '.repeat(space > 0 ? space : 1) + r; };
             let textBT = '\x1B\x61\x01' + DB.settingStruk.namaToko + '\n\x1B\x61\x00' + DB.settingStruk.alamat + '\n--------------------------------\nNota : ' + trx.idNota + '\nKasir: ' + trx.kasir + '\nWaktu: ' + trx.waktu.split(' ')[0] + '\n--------------------------------\n';
             trx.items.forEach(item => { let sub = item.harga * item.qty; textBT += item.nama.substring(0, 32) + '\n'; let calc = `  ${item.qty} x ${item.harga.toLocaleString('id-ID')}`; textBT += formatLine(calc, sub.toLocaleString('id-ID')) + '\n'; if(item.catatan) textBT += `  * ${item.catatan}\n`; });
-            textBT += '--------------------------------\n' + formatLine('TOTAL', 'Rp ' + trx.totalNota.toLocaleString('id-ID')) + '\n' + formatLine('BAYAR', 'Rp ' + trx.bayar.toLocaleString('id-ID')) + '\n' + formatLine('KEMBALI', 'Rp ' + (trx.bayar - trx.totalNota).toLocaleString('id-ID')) + '\n--------------------------------\n\x1B\x61\x01' + DB.settingStruk.footer + '\n\n\n';
+            textBT += '--------------------------------\n' + formatLine('TOTAL', 'Rp ' + trx.totalNota.toLocaleString('id-ID')) + '\n' + formatLine('BAYAR', 'Rp ' + trx.bayar.toLocaleString('id-ID')) + '\n' + formatLine('KEMBALI', 'Rp ' + (trx.bayar - trx.totalNota).toLocaleString('id-ID')) + '\n' + formatLine('METODE', trx.metode) + '\n--------------------------------\n\x1B\x61\x01' + DB.settingStruk.footer + '\n\n\n';
             await cetakBluetoothRaw(textBT);
         }
 
@@ -1204,7 +1206,6 @@
             tbody.innerHTML = htmlTemp;
         }
         
-        // FITUR BARU: HELPER UNTUK KONVERSI & KOMPRESI GAMBAR KE BASE64
         function prosesGambarKeBase64(file) {
             return new Promise((resolve, reject) => {
                 let reader = new FileReader();
@@ -1213,7 +1214,6 @@
                     let img = new Image();
                     img.src = event.target.result;
                     img.onload = function() {
-                        // Maksimal lebar/tinggi thumbnail 300px agar tidak membebani limit 1MB Firestore
                         let MAX_WIDTH = 300; let MAX_HEIGHT = 300;
                         let width = img.width; let height = img.height;
                         if (width > height) { if (width > MAX_WIDTH) { height *= MAX_WIDTH / width; width = MAX_WIDTH; } } 
@@ -1224,7 +1224,6 @@
                         let ctx = canvas.getContext("2d");
                         ctx.drawImage(img, 0, 0, width, height);
                         
-                        // Konversi ke Base64 dengan kompresi JPG 70%
                         let dataUrl = canvas.toDataURL("image/jpeg", 0.7);
                         resolve(dataUrl);
                     }
@@ -1243,7 +1242,6 @@
             let stok = parseInt(document.getElementById('new-stock').value || 0); 
             let kios = document.getElementById('new-kios').value;
             
-            // Mengambil file dari input
             let fileInput = document.getElementById('new-img-file');
             let file = fileInput.files[0];
 
@@ -1254,7 +1252,6 @@
 
             let gambarBase64 = "";
             if (file) {
-                // Proses kompresi gambar agar database Firebase tidak cepat penuh
                 gambarBase64 = await prosesGambarKeBase64(file);
             }
 
@@ -1264,7 +1261,7 @@
             
             document.getElementById('new-barcode').value=''; 
             document.getElementById('new-name').value=''; 
-            fileInput.value = ''; // Mengosongkan file input kembali
+            fileInput.value = ''; 
             Swal.fire('Sukses', 'Menu berhasil ditambahkan', 'success');
         }
 
