@@ -466,7 +466,7 @@
                     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; flex-wrap: wrap; gap: 8px;">
                         <h4 style="color: var(--primary); font-size: 14px;">Form Tambah Menu Manual</h4>
                         <div style="display: flex; gap: 8px;">
-                            <button class="btn-action btn-outline" onclick="downloadTemplateCSV('stok')"><i class="fas fa-download"></i> Template CSV (Tanpa URL)</button>
+                            <button class="btn-action btn-outline" onclick="downloadTemplateCSV('stok')"><i class="fas fa-download"></i> Template CSV (Dengan URL)</button>
                             <button class="btn-action" style="background: var(--accent);" onclick="document.getElementById('import-stok').click()"><i class="fas fa-upload"></i> Import CSV</button>
                             <input type="file" id="import-stok" class="hide-file" accept=".csv" onchange="importCSV(event, 'stok')">
                         </div>
@@ -903,8 +903,9 @@
 
         // CSV EXPORT/IMPORT
         function downloadCSV(dataArray, filename) { let csvContent = "data:text/csv;charset=utf-8,"; dataArray.forEach(row => { csvContent += row.join(",") + "\r\n"; }); let link = document.createElement("a"); link.setAttribute("href", encodeURI(csvContent)); link.setAttribute("download", filename); document.body.appendChild(link); link.click(); document.body.removeChild(link); }
+        
         function downloadTemplateCSV(type) { 
-            if(type === 'stok') downloadCSV([["ID_Menu", "Nama_Menu", "Nama_Kios", "Harga_Jual", "Stok_Awal", "Kategori"], ["MIE01", "Mie Ayam", "Kios Utama", "20000", "50", "Makanan"]], "Template_Stok.csv"); 
+            if(type === 'stok') downloadCSV([["ID_Menu", "Nama_Menu", "Nama_Kios", "Harga_Jual", "Stok_Awal", "Kategori", "URL_Gambar"], ["MIE01", "Mie Ayam", "Kios Utama", "20000", "50", "Makanan", "https://contoh.com/gambar-mieayam.jpg"]], "Template_Stok.csv"); 
             if(type === 'kios') downloadCSV([["Nama_Kios"], ["Kios Baru"]], "Template_Kios.csv"); 
             if(type === 'karyawan') downloadCSV([["Nama_Karyawan", "PIN_Angka", "Nama_Kios_Akses"], ["Budi", "123123", "Kios Utama"]], "Template_Karyawan.csv"); 
         }
@@ -917,10 +918,10 @@
                 for(let i=1; i<lines.length; i++){
                     if(!lines[i].trim()) continue; let cols = lines[i].split(',').map(c => c.trim().replace(/"/g, ''));
                     if(type === 'stok' && cols.length >= 5) { 
-                        let [id, nama, kios, harga, stok, kategori] = cols; 
+                        let [id, nama, kios, harga, stok, kategori, urlGambar] = cols; 
                         if(id && DB.kiosList.includes(kios)) { 
                             let ref = db.collection("pos_produk").doc(kios+"_"+id);
-                            batch.set(ref, {id, nama, kios, harga:parseInt(harga)||0, stok:parseInt(stok)||0, kategori: kategori||"Makanan", gambar: ""}); count++; 
+                            batch.set(ref, {id, nama, kios, harga:parseInt(harga)||0, stok:parseInt(stok)||0, kategori: kategori||"Makanan", gambar: urlGambar || ""}); count++; 
                         } 
                     }
                     if(type === 'kios' && cols.length >= 1) { let n = cols[0]; if(n) { batch.set(db.collection("pos_kios").doc(n), {nama: n}); count++; } }
