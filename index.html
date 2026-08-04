@@ -466,7 +466,7 @@
                     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; flex-wrap: wrap; gap: 8px;">
                         <h4 style="color: var(--primary); font-size: 14px;">Form Tambah Menu Manual</h4>
                         <div style="display: flex; gap: 8px;">
-                            <button class="btn-action btn-outline" onclick="downloadTemplateCSV('stok')"><i class="fas fa-download"></i> Template CSV (Dengan URL)</button>
+                            <button class="btn-action btn-outline" onclick="downloadTemplateCSV('stok')"><i class="fas fa-download"></i> Template CSV (Tanpa URL)</button>
                             <button class="btn-action" style="background: var(--accent);" onclick="document.getElementById('import-stok').click()"><i class="fas fa-upload"></i> Import CSV</button>
                             <input type="file" id="import-stok" class="hide-file" accept=".csv" onchange="importCSV(event, 'stok')">
                         </div>
@@ -603,7 +603,7 @@
                             <label>Mode QRIS:</label>
                             <select id="qris-mode-select" class="form-control" onchange="toggleQrisSettings()">
                                 <option value="statis">QRIS Statis (Upload Gambar)</option>
-                                <option value="midtrans">QRIS Dinamis (Midtrans API)</option>
+                                <option value="midtrans">QRIS Dinamis (API Penengah)</option>
                             </select>
                         </div>
 
@@ -621,15 +621,8 @@
                         <!-- Opsi Dinamis -->
                         <div id="qris-setup-midtrans" style="display:none;">
                             <div class="form-group">
-                                <label>Server Key Midtrans:</label>
-                                <input type="password" id="setting-midtrans-key" class="form-control" placeholder="SB-Mid-server-xxx...">
-                            </div>
-                            <div class="form-group">
-                                <label>Mode Environment:</label>
-                                <select id="setting-midtrans-env" class="form-control">
-                                    <option value="sandbox">Sandbox (Uji Coba)</option>
-                                    <option value="production">Production (Live)</option>
-                                </select>
+                                <label>URL API Penengah (Vercel):</label>
+                                <input type="url" id="setting-backend-url" class="form-control" placeholder="https://backend-pos-qris.vercel.app/buat-qris">
                             </div>
                         </div>
 
@@ -711,10 +704,10 @@
 
         function hashPIN(pin) { return CryptoJS.SHA256(pin).toString(); }
 
-        let DB = { kiosList: [], produkList: [], riwayatPenjualan: [], karyawanList: [], settingStruk: {}, kartuPelanggan: [], settingPrinter: 'browser', printerName: '', settingQris: { mode: 'statis', staticImage: '', midtransKey: '', isProduction: false } };
+        let DB = { kiosList: [], produkList: [], riwayatPenjualan: [], karyawanList: [], settingStruk: {}, kartuPelanggan: [], settingPrinter: 'browser', printerName: '', settingQris: { mode: 'statis', staticImage: '', backendUrl: '' } };
         let userAktif = null; let kiosAktifPOS = ""; let keranjang = []; let kategoriAktif = 'Semua'; let currentQueueFilter = 'ALL'; let isLocked = false; let salahLogCount = 0; let isFirstLoad = true;
 
-        // FUNGSI INISIALISASI DATABASE (RESTRUKTURISASI KE KOLEKSI)
+        // FUNGSI INISIALISASI DATABASE
         async function initDatabase() {
             try {
                 // 1. Load Pengaturan Sistem
@@ -724,12 +717,12 @@
                         DB.settingStruk = d.settingStruk || { namaToko: "POS KUSNADI", alamat: "-", footer: "Terima Kasih" };
                         DB.settingPrinter = d.settingPrinter || 'browser';
                         DB.printerName = d.printerName || '';
-                        DB.settingQris = d.settingQris || { mode: 'statis', staticImage: '', midtransKey: '', isProduction: false };
+                        DB.settingQris = d.settingQris || { mode: 'statis', staticImage: '', backendUrl: '' };
                         if(document.getElementById('sec-pengaturan').classList.contains('active')) muatDataPengaturanUI();
                         document.getElementById('header-app-name').innerText = DB.settingStruk.namaToko;
                     } else {
                         // Seeding Pengaturan Awal
-                        db.collection("pos_pengaturan").doc("sistem").set({ settingStruk: { namaToko: "POS KUSNADI", alamat: "-", footer: "Terima Kasih!" }, settingPrinter: 'browser', printerName: "", settingQris: { mode: 'statis', staticImage: '', midtransKey: '', isProduction: false } });
+                        db.collection("pos_pengaturan").doc("sistem").set({ settingStruk: { namaToko: "POS KUSNADI", alamat: "-", footer: "Terima Kasih!" }, settingPrinter: 'browser', printerName: "", settingQris: { mode: 'statis', staticImage: '', backendUrl: '' } });
                     }
                 });
 
@@ -773,7 +766,7 @@
                 db.collection("pos_transaksi").where("waktuMulaiMs", ">=", todayStart.getTime()).onSnapshot(snap => {
                     DB.riwayatPenjualan = [];
                     snap.forEach(doc => DB.riwayatPenjualan.push(doc.data()));
-                    DB.riwayatPenjualan.sort((a,b) => b.waktuMulaiMs - a.waktuMulaiMs); // Urutkan terbaru di atas
+                    DB.riwayatPenjualan.sort((a,b) => b.waktuMulaiMs - a.waktuMulaiMs); 
                     if(userAktif) {
                         updateQueueCounters();
                         if(document.getElementById('sec-laporan').classList.contains('active')) renderLaporanPenjualan();
@@ -903,9 +896,8 @@
 
         // CSV EXPORT/IMPORT
         function downloadCSV(dataArray, filename) { let csvContent = "data:text/csv;charset=utf-8,"; dataArray.forEach(row => { csvContent += row.join(",") + "\r\n"; }); let link = document.createElement("a"); link.setAttribute("href", encodeURI(csvContent)); link.setAttribute("download", filename); document.body.appendChild(link); link.click(); document.body.removeChild(link); }
-        
         function downloadTemplateCSV(type) { 
-            if(type === 'stok') downloadCSV([["ID_Menu", "Nama_Menu", "Nama_Kios", "Harga_Jual", "Stok_Awal", "Kategori", "URL_Gambar"], ["MIE01", "Mie Ayam", "Kios Utama", "20000", "50", "Makanan", "https://contoh.com/gambar-mieayam.jpg"]], "Template_Stok.csv"); 
+            if(type === 'stok') downloadCSV([["ID_Menu", "Nama_Menu", "Nama_Kios", "Harga_Jual", "Stok_Awal", "Kategori"], ["MIE01", "Mie Ayam", "Kios Utama", "20000", "50", "Makanan"]], "Template_Stok.csv"); 
             if(type === 'kios') downloadCSV([["Nama_Kios"], ["Kios Baru"]], "Template_Kios.csv"); 
             if(type === 'karyawan') downloadCSV([["Nama_Karyawan", "PIN_Angka", "Nama_Kios_Akses"], ["Budi", "123123", "Kios Utama"]], "Template_Karyawan.csv"); 
         }
@@ -918,10 +910,10 @@
                 for(let i=1; i<lines.length; i++){
                     if(!lines[i].trim()) continue; let cols = lines[i].split(',').map(c => c.trim().replace(/"/g, ''));
                     if(type === 'stok' && cols.length >= 5) { 
-                        let [id, nama, kios, harga, stok, kategori, urlGambar] = cols; 
+                        let [id, nama, kios, harga, stok, kategori] = cols; 
                         if(id && DB.kiosList.includes(kios)) { 
                             let ref = db.collection("pos_produk").doc(kios+"_"+id);
-                            batch.set(ref, {id, nama, kios, harga:parseInt(harga)||0, stok:parseInt(stok)||0, kategori: kategori||"Makanan", gambar: urlGambar || ""}); count++; 
+                            batch.set(ref, {id, nama, kios, harga:parseInt(harga)||0, stok:parseInt(stok)||0, kategori: kategori||"Makanan", gambar: ""}); count++; 
                         } 
                     }
                     if(type === 'kios' && cols.length >= 1) { let n = cols[0]; if(n) { batch.set(db.collection("pos_kios").doc(n), {nama: n}); count++; } }
@@ -1036,24 +1028,54 @@
         async function bayarPakaiQRIS() {
             if(keranjang.length === 0) return Swal.fire('Error', 'Keranjang masih kosong!', 'error');
             let total = keranjang.reduce((sum, item) => sum + (item.harga * item.qty), 0);
-            let qrUrl = ''; let pesanAtas = '';
+            
             if (DB.settingQris.mode === 'statis') {
                 if (!DB.settingQris.staticImage) return Swal.fire('QRIS Belum Diatur', 'Silakan upload gambar QRIS di Pengaturan.', 'warning');
-                qrUrl = DB.settingQris.staticImage; pesanAtas = 'Scan QRIS berikut & pastikan nominal sesuai';
+                tampilkanModalQRIS(DB.settingQris.staticImage, 'Scan QRIS berikut & pastikan nominal sesuai', total);
             } else {
-                if(!DB.settingQris.midtransKey) return Swal.fire('Midtrans Belum Diatur', 'API Key Midtrans kosong.', 'warning');
-                Swal.fire({ title: 'Membuat QRIS...', text: 'Menghubungkan ke API Midtrans', allowOutsideClick: false, didOpen: () => { Swal.showLoading(); }});
+                let backendUrl = DB.settingQris.backendUrl; 
+                if(!backendUrl) return Swal.fire('Backend Belum Diatur', 'URL API Penengah kosong. Cek pengaturan!', 'warning');
+
+                Swal.fire({ title: 'Membuat QRIS...', text: 'Menghubungkan ke Server Penengah', allowOutsideClick: false, didOpen: () => { Swal.showLoading(); }});
+                
                 try {
-                    let envUrl = DB.settingQris.isProduction ? 'https://api.midtrans.com/v2/charge' : 'https://api.sandbox.midtrans.com/v2/charge';
-                    let authHeader = btoa(DB.settingQris.midtransKey + ':');
                     let orderId = "QRIS-" + Date.now();
-                    let res = await fetch(envUrl, { method: 'POST', headers: { 'Accept': 'application/json', 'Content-Type': 'application/json', 'Authorization': 'Basic ' + authHeader }, body: JSON.stringify({ payment_type: 'qris', transaction_details: { order_id: orderId, gross_amount: total } }) });
+                    let res = await fetch(backendUrl, { 
+                        method: 'POST', 
+                        headers: { 'Content-Type': 'application/json' }, 
+                        body: JSON.stringify({ order_id: orderId, gross_amount: total }) 
+                    });
+                    
                     let data = await res.json();
-                    if(data.status_code === '201' && data.actions && data.actions.length > 0) { qrUrl = data.actions[0].url; pesanAtas = 'Scan QRIS Dinamis via E-Wallet'; } else { throw new Error(data.status_message || "Gagal membuat QRIS."); }
-                } catch (e) { return Swal.fire('Gagal Terhubung', e.message, 'error'); }
+                    if(res.ok && data.qr_url) { 
+                        tampilkanModalQRIS(data.qr_url, 'Scan QRIS Dinamis via E-Wallet', total); 
+                    } else { 
+                        throw new Error(data.message || "Gagal membuat QRIS."); 
+                    }
+                } catch (e) { 
+                    return Swal.fire('Gagal Terhubung', e.message, 'error'); 
+                }
             }
-            Swal.fire({ title: 'Pembayaran QRIS', html: `<p style="font-size: 13px;">${pesanAtas}</p><div style="background: white; padding: 15px; border-radius: 10px; display: inline-block; border: 2px dashed var(--accent);"><img src="${qrUrl}" style="width: 200px; height: 200px; object-fit: contain;"></div><h3 style="color: var(--primary); font-weight: 900;">Total: Rp ${total.toLocaleString('id-ID')}</h3>`, showCancelButton: true, confirmButtonText: '<i class="fas fa-check-circle"></i> Dana Masuk', cancelButtonText: 'Batal', confirmButtonColor: 'var(--success)'
-            }).then((result) => { if (result.isConfirmed) { prosesCheckout(total, total, 'QRIS'); Swal.fire({ icon: 'success', title: 'Berhasil!', showConfirmButton: false, timer: 1500 }); } });
+        }
+
+        function tampilkanModalQRIS(qrUrl, pesanAtas, total) {
+            Swal.fire({ 
+                title: 'Pembayaran QRIS', 
+                html: `<p style="font-size: 13px;">${pesanAtas}</p>
+                       <div style="background: white; padding: 15px; border-radius: 10px; display: inline-block; border: 2px dashed var(--accent);">
+                           <img src="${qrUrl}" style="width: 200px; height: 200px; object-fit: contain;">
+                       </div>
+                       <h3 style="color: var(--primary); font-weight: 900;">Total: Rp ${total.toLocaleString('id-ID')}</h3>`, 
+                showCancelButton: true, 
+                confirmButtonText: '<i class="fas fa-check-circle"></i> Dana Masuk', 
+                cancelButtonText: 'Batal', 
+                confirmButtonColor: 'var(--success)'
+            }).then((result) => { 
+                if (result.isConfirmed) { 
+                    prosesCheckout(total, total, 'QRIS'); 
+                    Swal.fire({ icon: 'success', title: 'Berhasil!', showConfirmButton: false, timer: 1500 }); 
+                } 
+            });
         }
 
         function cetakNotaHTML(trx) {
@@ -1164,14 +1186,15 @@
         // PENGATURAN, KARYAWAN & TENANT
         function muatDataPengaturanUI() { 
             document.getElementById('setting-struk-nama').value = DB.settingStruk.namaToko; document.getElementById('setting-struk-alamat').value = DB.settingStruk.alamat; document.getElementById('setting-struk-footer').value = DB.settingStruk.footer; document.getElementById('setting-printer-mode').value = DB.settingPrinter; gantiModePrinter(); 
-            document.getElementById('qris-mode-select').value = DB.settingQris.mode || 'statis'; document.getElementById('setting-midtrans-key').value = DB.settingQris.midtransKey || ''; document.getElementById('setting-midtrans-env').value = DB.settingQris.isProduction ? 'production' : 'sandbox';
+            document.getElementById('qris-mode-select').value = DB.settingQris.mode || 'statis'; 
+            if(document.getElementById('setting-backend-url')) document.getElementById('setting-backend-url').value = DB.settingQris.backendUrl || ''; 
             document.getElementById('qris-static-preview').innerHTML = DB.settingQris.staticImage ? `<img src="${DB.settingQris.staticImage}" style="width:100%; height:100%; object-fit:contain;">` : `<span style="font-size:10px; color:var(--text-muted);">Belum Ada QRIS</span>`; toggleQrisSettings();
             if(userAktif && userAktif.role === 'Owner') { let sel = document.getElementById('profil-user-select'); if(sel) { sel.innerHTML = DB.karyawanList.map((k, index) => `<option value="${index}">${k.nama} (${k.role})</option>`).join(''); loadProfilTerpilih(); } }
         }
         function toggleQrisSettings() { let m = document.getElementById('qris-mode-select').value; document.getElementById('qris-setup-statis').style.display = m === 'statis' ? 'block' : 'none'; document.getElementById('qris-setup-midtrans').style.display = m === 'midtrans' ? 'block' : 'none'; }
         
         async function simpanPengaturanQris() {
-            let qSet = { mode: document.getElementById('qris-mode-select').value, midtransKey: document.getElementById('setting-midtrans-key').value.trim(), isProduction: (document.getElementById('setting-midtrans-env').value === 'production'), staticImage: DB.settingQris.staticImage };
+            let qSet = { mode: document.getElementById('qris-mode-select').value, backendUrl: document.getElementById('setting-backend-url').value.trim(), staticImage: DB.settingQris.staticImage };
             let fileInput = document.getElementById('qris-static-file'); if (fileInput.files && fileInput.files[0]) { qSet.staticImage = await prosesGambarKeBase64(fileInput.files[0]); document.getElementById('qris-static-preview').innerHTML = `<img src="${qSet.staticImage}" style="width:100%; height:100%; object-fit:contain;">`; }
             await db.collection("pos_pengaturan").doc("sistem").set({ settingQris: qSet }, { merge: true }); Swal.fire('Sukses', 'QRIS disimpan!', 'success');
         }
