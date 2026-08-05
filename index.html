@@ -782,9 +782,17 @@
             if (savedUser) {
                 let tempUser = JSON.parse(savedUser);
                 let updatedUser = DB.karyawanList.find(u => u.pinHash === tempUser.pinHash);
-                userAktif = updatedUser ? updatedUser : tempUser; 
-                kiosAktifPOS = userAktif.role === 'Owner' ? (DB.kiosList[0] || "Kios Utama") : userAktif.kios;
-                lanjutkanLogin();
+                if (updatedUser) {
+                    userAktif = updatedUser; 
+                    kiosAktifPOS = userAktif.role === 'Owner' ? (DB.kiosList[0] || "Kios Utama") : userAktif.kios;
+                    lanjutkanLogin();
+                } else {
+                    sessionStorage.removeItem('pos_user_aktif');
+                    document.getElementById('input-pin').disabled = false; 
+                    document.getElementById('btn-login').disabled = false;
+                    document.getElementById('btn-login').innerHTML = `LOGIN <i class="fas fa-arrow-right" style="margin-left: 8px;"></i>`;
+                    document.getElementById('input-pin').focus();
+                }
             } else {
                 document.getElementById('input-pin').disabled = false; document.getElementById('btn-login').disabled = false;
                 document.getElementById('btn-login').innerHTML = `LOGIN <i class="fas fa-arrow-right" style="margin-left: 8px;"></i>`;
@@ -911,7 +919,11 @@
                     if(!lines[i].trim()) continue; let cols = lines[i].split(',').map(c => c.trim().replace(/"/g, ''));
                     if(type === 'stok' && cols.length >= 5) { 
                         let [id, nama, kios, harga, stok, kategori] = cols; 
-                        if(id && DB.kiosList.includes(kios)) { 
+                        if(id && kios) { 
+                            if(!DB.kiosList.includes(kios)) {
+                                batch.set(db.collection("pos_kios").doc(kios), {nama: kios});
+                                DB.kiosList.push(kios); // Update state lokal sementara
+                            }
                             let ref = db.collection("pos_produk").doc(kios+"_"+id);
                             batch.set(ref, {id, nama, kios, harga:parseInt(harga)||0, stok:parseInt(stok)||0, kategori: kategori||"Makanan", gambar: ""}); count++; 
                         } 
@@ -1002,7 +1014,7 @@
         function setUangPas() { let total = keranjang.reduce((sum, item) => sum + (item.harga * item.qty), 0); document.getElementById('input-bayar').value = total; }
 
         async function prosesCheckout(total, bayar, metode) {
-            let idNota = "PJ-" + Date.now().toString().slice(-6);
+            let idNota = "PJ-" + Date.now().toString().slice(-5) + Math.floor(Math.random() * 1000);
             let trx = { idNota: idNota, waktuMulaiMs: Date.now(), waktuSelesaiMs: null, waktu: new Date().toLocaleString('id-ID'), totalNota: total, bayar: bayar, metode: metode, kasir: userAktif.nama, tipePesanan: document.getElementById('tipe-pesanan').value, meja: document.getElementById('nomor-meja').value || "-", statusAntrian: "Proses", isVoid: false, items: [...keranjang] };
             
             // Simpan Transaksi & Potong Stok via Batch Write Firestore
