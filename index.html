@@ -305,7 +305,7 @@
                         <div style="display:flex; gap:10px; margin-bottom: 10px; flex-shrink: 0;">
                             <div class="search-bar">
                                 <i class="fas fa-search"></i>
-                                <!-- PERUBAHAN: Tambahan fungsi pencarian dinamis (oninput) -->
+                                <!-- Pencarian langsung merespons saat diketik (walau 1 huruf) -->
                                 <input type="text" id="input-barcode" placeholder="Ketik Menu / Scan Barcode..." onkeyup="handleBarcode(event)" oninput="filterProduk(this.value)">
                             </div>
                             <select id="pos-kios-selector" class="form-control" style="width: auto; font-weight: bold; cursor: pointer; border: 2px solid var(--accent); background: white;" onchange="gantiKiosPOS()"></select>
@@ -446,7 +446,7 @@
                         <label style="font-size: 10px; font-weight: 800; color: var(--text-muted); text-transform: uppercase; margin-bottom: 4px; display: block;">Cari Nota/Kasir:</label>
                         <input type="text" id="sales-search-input" class="form-control" placeholder="Kata kunci..." oninput="renderLaporanPenjualan()">
                     </div>
-                    <!-- PERUBAHAN: Tambahan tombol Cetak Laporan -->
+                    <!-- Tombol Cetak Laporan Thermal sesuai Filter -->
                     <div style="display: flex; align-items: flex-end; gap: 8px;">
                         <button class="btn-action" style="background: var(--secondary);" onclick="cetakRiwayatLaporan()"><i class="fas fa-print"></i> Cetak Laporan</button>
                         <button class="btn-action" style="background: var(--success);" onclick="downloadCSVLaporan()"><i class="fas fa-file-excel"></i> Export CSV</button>
@@ -972,7 +972,6 @@
             }); grid.innerHTML = htmlTemp;
         }
 
-        // PERUBAHAN: Logika handleBarcode diperbarui
         function handleBarcode(e) { 
             if (e.key === 'Enter') { 
                 let keyword = document.getElementById('input-barcode').value.trim(); 
@@ -1149,16 +1148,17 @@
             }); tbody.innerHTML = htmlTemp; document.getElementById('total-omset-display').innerText = `Rp ${totalOmset.toLocaleString('id-ID')}`;
         }
 
-        // PERUBAHAN: Fungsi Cetak Riwayat Thermal
+        // Fungsi Cetak Laporan Thermal Berdasarkan Filter Aktif
         function cetakRiwayatLaporan() {
             let filterKios = document.getElementById('sales-kios-filter').value;
             let search = document.getElementById('sales-search-input').value.toLowerCase();
             let totalOmset = 0;
             
             let htmlText = `<div style="text-align: center; margin-bottom: 10px;">
-                <h3 style="margin:0; font-size: 14px;">LAPORAN PENJUALAN</h3>
-                <div style="font-size:10px;">Kios: ${filterKios}</div>
-                <div style="font-size:10px;">Cetak: ${new Date().toLocaleString('id-ID')}</div>
+                <h3 style="margin:0; font-size: 14px;">${DB.settingStruk.namaToko}</h3>
+                <div style="font-size:11px; font-weight:bold; margin-top:2px;">LAPORAN PENJUALAN</div>
+                <div style="font-size:10px;">Filter Kios: ${filterKios}</div>
+                <div style="font-size:10px;">Waktu Cetak: ${new Date().toLocaleString('id-ID')}</div>
             </div><div class="receipt-line"></div>`;
             
             let dataDicetak = false;
@@ -1185,7 +1185,7 @@
             
             if(!dataDicetak) return Swal.fire('Kosong', 'Tidak ada data pada filter saat ini.', 'warning');
             
-            htmlText += `<div style="text-align: right; font-weight: bold; font-size: 14px; margin-top: 10px;">
+            htmlText += `<div style="text-align: right; font-weight: bold; font-size: 13px; margin-top: 10px;">
                 TOTAL OMSET: Rp ${totalOmset.toLocaleString('id-ID')}
             </div>`;
             
