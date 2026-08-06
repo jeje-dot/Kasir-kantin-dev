@@ -305,7 +305,8 @@
                         <div style="display:flex; gap:10px; margin-bottom: 10px; flex-shrink: 0;">
                             <div class="search-bar">
                                 <i class="fas fa-search"></i>
-                                <input type="text" id="input-barcode" placeholder="Ketik Menu / Scan Barcode..." onkeyup="handleBarcode(event)">
+                                <!-- PERUBAHAN: Tambahan fungsi pencarian dinamis (oninput) -->
+                                <input type="text" id="input-barcode" placeholder="Ketik Menu / Scan Barcode..." onkeyup="handleBarcode(event)" oninput="filterProduk(this.value)">
                             </div>
                             <select id="pos-kios-selector" class="form-control" style="width: auto; font-weight: bold; cursor: pointer; border: 2px solid var(--accent); background: white;" onchange="gantiKiosPOS()"></select>
                         </div>
@@ -445,7 +446,9 @@
                         <label style="font-size: 10px; font-weight: 800; color: var(--text-muted); text-transform: uppercase; margin-bottom: 4px; display: block;">Cari Nota/Kasir:</label>
                         <input type="text" id="sales-search-input" class="form-control" placeholder="Kata kunci..." oninput="renderLaporanPenjualan()">
                     </div>
+                    <!-- PERUBAHAN: Tambahan tombol Cetak Laporan -->
                     <div style="display: flex; align-items: flex-end; gap: 8px;">
+                        <button class="btn-action" style="background: var(--secondary);" onclick="cetakRiwayatLaporan()"><i class="fas fa-print"></i> Cetak Laporan</button>
                         <button class="btn-action" style="background: var(--success);" onclick="downloadCSVLaporan()"><i class="fas fa-file-excel"></i> Export CSV</button>
                         <button id="btn-reset-riwayat" class="btn-action" style="background: var(--danger);" onclick="hapusSemuaRiwayat()"><i class="fas fa-trash"></i> Reset</button>
                     </div>
@@ -782,17 +785,9 @@
             if (savedUser) {
                 let tempUser = JSON.parse(savedUser);
                 let updatedUser = DB.karyawanList.find(u => u.pinHash === tempUser.pinHash);
-                if (updatedUser) {
-                    userAktif = updatedUser; 
-                    kiosAktifPOS = userAktif.role === 'Owner' ? (DB.kiosList[0] || "Kios Utama") : userAktif.kios;
-                    lanjutkanLogin();
-                } else {
-                    sessionStorage.removeItem('pos_user_aktif');
-                    document.getElementById('input-pin').disabled = false; 
-                    document.getElementById('btn-login').disabled = false;
-                    document.getElementById('btn-login').innerHTML = `LOGIN <i class="fas fa-arrow-right" style="margin-left: 8px;"></i>`;
-                    document.getElementById('input-pin').focus();
-                }
+                userAktif = updatedUser ? updatedUser : tempUser; 
+                kiosAktifPOS = userAktif.role === 'Owner' ? (DB.kiosList[0] || "Kios Utama") : userAktif.kios;
+                lanjutkanLogin();
             } else {
                 document.getElementById('input-pin').disabled = false; document.getElementById('btn-login').disabled = false;
                 document.getElementById('btn-login').innerHTML = `LOGIN <i class="fas fa-arrow-right" style="margin-left: 8px;"></i>`;
@@ -919,11 +914,7 @@
                     if(!lines[i].trim()) continue; let cols = lines[i].split(',').map(c => c.trim().replace(/"/g, ''));
                     if(type === 'stok' && cols.length >= 5) { 
                         let [id, nama, kios, harga, stok, kategori] = cols; 
-                        if(id && kios) { 
-                            if(!DB.kiosList.includes(kios)) {
-                                batch.set(db.collection("pos_kios").doc(kios), {nama: kios});
-                                DB.kiosList.push(kios); // Update state lokal sementara
-                            }
+                        if(id && DB.kiosList.includes(kios)) { 
                             let ref = db.collection("pos_produk").doc(kios+"_"+id);
                             batch.set(ref, {id, nama, kios, harga:parseInt(harga)||0, stok:parseInt(stok)||0, kategori: kategori||"Makanan", gambar: ""}); count++; 
                         } 
@@ -981,7 +972,27 @@
             }); grid.innerHTML = htmlTemp;
         }
 
-        function handleBarcode(e) { if (e.key === 'Enter') { let id = document.getElementById('input-barcode').value.trim(); if(id) tambahKeKeranjang(id); document.getElementById('input-barcode').value = ''; } }
+        // PERUBAHAN: Logika handleBarcode diperbarui
+        function handleBarcode(e) { 
+            if (e.key === 'Enter') { 
+                let keyword = document.getElementById('input-barcode').value.trim(); 
+                if(keyword) {
+                    let pById = DB.produkList.find(x => x.id === keyword && x.kios === kiosAktifPOS);
+                    if(pById) {
+                        tambahKeKeranjang(pById.id);
+                    } else {
+                        let pByName = DB.produkList.find(x => x.nama.toLowerCase() === keyword.toLowerCase() && x.kios === kiosAktifPOS);
+                        if(pByName) {
+                            tambahKeKeranjang(pByName.id);
+                        } else {
+                            Swal.fire('Tidak Ditemukan', 'Menu atau Barcode tidak ditemukan di daftar!', 'warning');
+                        }
+                    }
+                } 
+                document.getElementById('input-barcode').value = ''; 
+                filterProduk(''); 
+            } 
+        }
 
         function tambahKeKeranjang(id) {
             let p = DB.produkList.find(x => x.id === id && x.kios === kiosAktifPOS);
@@ -1014,7 +1025,7 @@
         function setUangPas() { let total = keranjang.reduce((sum, item) => sum + (item.harga * item.qty), 0); document.getElementById('input-bayar').value = total; }
 
         async function prosesCheckout(total, bayar, metode) {
-            let idNota = "PJ-" + Date.now().toString().slice(-5) + Math.floor(Math.random() * 1000);
+            let idNota = "PJ-" + Date.now().toString().slice(-6);
             let trx = { idNota: idNota, waktuMulaiMs: Date.now(), waktuSelesaiMs: null, waktu: new Date().toLocaleString('id-ID'), totalNota: total, bayar: bayar, metode: metode, kasir: userAktif.nama, tipePesanan: document.getElementById('tipe-pesanan').value, meja: document.getElementById('nomor-meja').value || "-", statusAntrian: "Proses", isVoid: false, items: [...keranjang] };
             
             // Simpan Transaksi & Potong Stok via Batch Write Firestore
@@ -1090,22 +1101,20 @@
             });
         }
 
-                function cetakNotaHTML(trx) {
+        function cetakNotaHTML(trx) {
             let area = document.getElementById('receipt-print-area');
             let itemHtml = trx.items.map(i => `<div class="receipt-row"><span>${i.nama} x${i.qty}</span><span>Rp ${(i.harga*i.qty).toLocaleString('id-ID')}</span></div>${i.catatan ? `<div style="font-size:10px; color:#555; margin-left:5px;">* ${i.catatan}</div>` : ''}`).join('');
-            area.innerHTML = `<div style="text-align: center; margin-bottom: 10px;"><h3 style="margin:0; font-size: 15px;">${DB.settingStruk.namaToko}</h3><div style="font-size:10px;">${DB.settingStruk.alamat}</div></div><div class="receipt-line"></div><div class="receipt-row"><span>Nota: ${trx.idNota}</span><span>${trx.waktu}</span></div><div class="receipt-row"><span>Kasir: ${trx.kasir}</span><span>${trx.tipePesanan}</span></div><div class="receipt-row"><span>Meja: ${trx.meja}</span><span>Byr: ${trx.metode}</span></div><div class="receipt-line"></div>${itemHtml}<div class="receipt-line"></div><div class="receipt-row" style="font-weight: bold; font-size: 13px;"><span>TOTAL</span><span>Rp ${trx.totalNota.toLocaleString('id-ID')}</span></div><div class="receipt-row"><span>BAYAR</span><span>Rp ${trx.bayar.toLocaleString('id-ID')}</span></div><div class="receipt-row"><span>KEMBALI</span><span>Rp ${(trx.bayar - trx.totalNota).toLocaleString('id-ID')}</span></div><div class="receipt-row" style="font-weight: bold; margin-top: 4px;"><span>METODE</span><span>${trx.metode}</span></div><div class="receipt-line"></div><div style="text-align: center; font-size:10px; margin-top: 8px;">${DB.settingStruk.footer}</div>`;
+            area.innerHTML = `<div style="text-align: center; margin-bottom: 10px;"><h3 style="margin:0; font-size: 15px;">${DB.settingStruk.namaToko}</h3><div style="font-size:10px;">${DB.settingStruk.alamat}</div></div><div class="receipt-line"></div><div class="receipt-row"><span>Nota: ${trx.idNota}</span><span>${trx.waktu.split(' ')[0]}</span></div><div class="receipt-row"><span>Kasir: ${trx.kasir}</span><span>${trx.tipePesanan}</span></div><div class="receipt-row"><span>Meja: ${trx.meja}</span><span>Byr: ${trx.metode}</span></div><div class="receipt-line"></div>${itemHtml}<div class="receipt-line"></div><div class="receipt-row" style="font-weight: bold; font-size: 13px;"><span>TOTAL</span><span>Rp ${trx.totalNota.toLocaleString('id-ID')}</span></div><div class="receipt-row"><span>BAYAR</span><span>Rp ${trx.bayar.toLocaleString('id-ID')}</span></div><div class="receipt-row"><span>KEMBALI</span><span>Rp ${(trx.bayar - trx.totalNota).toLocaleString('id-ID')}</span></div><div class="receipt-row" style="font-weight: bold; margin-top: 4px;"><span>METODE</span><span>${trx.metode}</span></div><div class="receipt-line"></div><div style="text-align: center; font-size:10px; margin-top: 8px;">${DB.settingStruk.footer}</div>`;
             window.print();
         }
 
-
-                async function generateTeksStrukBluetooth(trx) {
+        async function generateTeksStrukBluetooth(trx) {
             let formatLine = (left, right) => { let l = String(left); let r = String(right); let space = 32 - l.length - r.length; return l + ' '.repeat(space > 0 ? space : 1) + r; };
-            let textBT = '\x1B\x61\x01' + DB.settingStruk.namaToko + '\n\x1B\x61\x00' + DB.settingStruk.alamat + '\n--------------------------------\nNota : ' + trx.idNota + '\nKasir: ' + trx.kasir + '\nWaktu: ' + trx.waktu + '\n--------------------------------\n';
+            let textBT = '\x1B\x61\x01' + DB.settingStruk.namaToko + '\n\x1B\x61\x00' + DB.settingStruk.alamat + '\n--------------------------------\nNota : ' + trx.idNota + '\nKasir: ' + trx.kasir + '\nWaktu: ' + trx.waktu.split(' ')[0] + '\n--------------------------------\n';
             trx.items.forEach(item => { let sub = item.harga * item.qty; textBT += item.nama.substring(0, 32) + '\n'; let calc = `  ${item.qty} x ${item.harga.toLocaleString('id-ID')}`; textBT += formatLine(calc, sub.toLocaleString('id-ID')) + '\n'; if(item.catatan) textBT += `  * ${item.catatan}\n`; });
             textBT += '--------------------------------\n' + formatLine('TOTAL', 'Rp ' + trx.totalNota.toLocaleString('id-ID')) + '\n' + formatLine('BAYAR', 'Rp ' + trx.bayar.toLocaleString('id-ID')) + '\n' + formatLine('KEMBALI', 'Rp ' + (trx.bayar - trx.totalNota).toLocaleString('id-ID')) + '\n' + formatLine('METODE', trx.metode) + '\n--------------------------------\n\x1B\x61\x01' + DB.settingStruk.footer + '\n\n\n';
             await cetakBluetoothRaw(textBT);
         }
-
         async function hubungkanPrinterBluetooth() { if (!navigator.bluetooth) return alert("Bluetooth tidak didukung."); try { btDevice = await navigator.bluetooth.requestDevice({ filters: [{services: ['000018f0-0000-1000-8000-00805f9b34fb']}], optionalServices: ['000018f0-0000-1000-8000-00805f9b34fb'] }); const server = await btDevice.gatt.connect(); const service = await server.getPrimaryService('000018f0-0000-1000-8000-00805f9b34fb'); btCharacteristic = await service.getCharacteristic('00002af1-0000-1000-8000-00805f9b34fb'); document.getElementById('printer-status').innerHTML = `<span style="color:var(--success);">✅ Terhubung: ${btDevice.name}</span>`; db.collection("pos_pengaturan").doc("sistem").set({ printerName: btDevice.name }, {merge:true}); } catch (err) { console.error(err); } }
         async function autoConnectPrinter() { if (navigator.bluetooth && navigator.bluetooth.getDevices) { try { const devices = await navigator.bluetooth.getDevices(); if(!DB.printerName) return; for (const device of devices) { if (device.name !== DB.printerName) continue; const server = await device.gatt.connect(); const service = await server.getPrimaryService('000018f0-0000-1000-8000-00805f9b34fb'); btCharacteristic = await service.getCharacteristic('00002af1-0000-1000-8000-00805f9b34fb'); btDevice = device; let statusEl = document.getElementById('printer-status'); if(statusEl) statusEl.innerHTML = `<span style="color:var(--success);">✅ Terhubung Otomatis: ${device.name}</span>`; break; } } catch(err) { console.error(err); } } }
         async function cetakBluetoothRaw(text) { if(!btCharacteristic) return false; try { let encoder = new TextEncoder(); let printData = encoder.encode('\x1B\x40' + text + '\n\n\n'); for(let i = 0; i < printData.length; i += 40) { await btCharacteristic.writeValue(printData.slice(i, i + 40)); await new Promise(r => setTimeout(r, 50)); } return true; } catch(e) { return false; } }
@@ -1138,6 +1147,51 @@
                 let actBtn = nota.isVoid ? `<span style="color:var(--danger); font-weight:bold; font-size:11px;">VOID</span>` : `<button class="btn-action btn-outline" style="padding: 4px 8px; font-size:10px;" onclick="cetakUlangNota('${nota.idNota}')"><i class="fas fa-print"></i></button> <button class="btn-action" style="background:var(--danger); padding: 4px 8px; font-size:10px;" onclick="prosesVoid('${nota.idNota}')">VOID</button>`;
                 htmlTemp += `<tr class="${trClass}"><td><code>${nota.idNota}</code><br><span style="font-size:10px; color:gray;">${nota.waktu}</span></td><td><b>${nota.kasir}</b><br><span style="font-size:10px; color:var(--accent);">${nota.metode}</span></td><td style="font-size:11px; line-height: 1.4;">${detail}</td><td><span style="font-weight:bold; font-size:11px; color:var(--secondary);">${durasiStr}</span></td><td><b style="color: var(--primary);">Rp ${subTotal.toLocaleString('id-ID')}</b></td><td>${actBtn}</td></tr>`;
             }); tbody.innerHTML = htmlTemp; document.getElementById('total-omset-display').innerText = `Rp ${totalOmset.toLocaleString('id-ID')}`;
+        }
+
+        // PERUBAHAN: Fungsi Cetak Riwayat Thermal
+        function cetakRiwayatLaporan() {
+            let filterKios = document.getElementById('sales-kios-filter').value;
+            let search = document.getElementById('sales-search-input').value.toLowerCase();
+            let totalOmset = 0;
+            
+            let htmlText = `<div style="text-align: center; margin-bottom: 10px;">
+                <h3 style="margin:0; font-size: 14px;">LAPORAN PENJUALAN</h3>
+                <div style="font-size:10px;">Kios: ${filterKios}</div>
+                <div style="font-size:10px;">Cetak: ${new Date().toLocaleString('id-ID')}</div>
+            </div><div class="receipt-line"></div>`;
+            
+            let dataDicetak = false;
+            DB.riwayatPenjualan.forEach(nota => {
+                let itemsFiltered = nota.items.filter(i => filterKios === 'ALL' || i.kios === filterKios);
+                if(itemsFiltered.length === 0) return;
+                if(search && !nota.idNota.toLowerCase().includes(search) && !nota.kasir.toLowerCase().includes(search)) return;
+                
+                dataDicetak = true;
+                let subTotal = itemsFiltered.reduce((sum, i) => sum + (i.harga*i.qty), 0);
+                if(!nota.isVoid) totalOmset += subTotal;
+                
+                let detail = itemsFiltered.map(i => `<div class="receipt-row"><span style="font-size:11px;">${i.nama} x${i.qty}</span><span style="font-size:11px;">${(i.harga*i.qty).toLocaleString('id-ID')}</span></div>`).join('');
+                
+                htmlText += `
+                <div style="${nota.isVoid ? 'text-decoration: line-through; color: #555;' : ''}">
+                    <div class="receipt-row" style="font-weight:bold; font-size:11px;"><span>${nota.idNota}</span><span>${nota.waktu.split(' ')[1]}</span></div>
+                    <div class="receipt-row" style="font-size:10px;"><span>Kasir: ${nota.kasir}</span><span>${nota.isVoid ? 'VOID' : nota.metode}</span></div>
+                    ${detail}
+                    <div class="receipt-row" style="font-weight:bold; margin-top:2px;"><span>TOTAL</span><span>Rp ${subTotal.toLocaleString('id-ID')}</span></div>
+                </div>
+                <div class="receipt-line" style="border-bottom: 1px dotted black;"></div>`;
+            });
+            
+            if(!dataDicetak) return Swal.fire('Kosong', 'Tidak ada data pada filter saat ini.', 'warning');
+            
+            htmlText += `<div style="text-align: right; font-weight: bold; font-size: 14px; margin-top: 10px;">
+                TOTAL OMSET: Rp ${totalOmset.toLocaleString('id-ID')}
+            </div>`;
+            
+            let printArea = document.getElementById('receipt-print-area');
+            printArea.innerHTML = htmlText;
+            window.print();
         }
 
         async function prosesVoid(idNota) {
