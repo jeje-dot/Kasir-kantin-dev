@@ -305,7 +305,6 @@
                         <div style="display:flex; gap:10px; margin-bottom: 10px; flex-shrink: 0;">
                             <div class="search-bar">
                                 <i class="fas fa-search"></i>
-                                <!-- FIX PENCARIAN: onkeyup memaksa render ulang tiap kali tombol dilepas (anti-lag di tablet) -->
                                 <input type="text" id="input-barcode" placeholder="Ketik Menu / Scan Barcode..." onkeyup="filterProduk(this.value); handleBarcode(event)" oninput="filterProduk(this.value)">
                             </div>
                             <select id="pos-kios-selector" class="form-control" style="width: auto; font-weight: bold; cursor: pointer; border: 2px solid var(--accent); background: white;" onchange="gantiKiosPOS()"></select>
@@ -437,7 +436,7 @@
                         Total Valid: <span id="total-omset-display" style="color: var(--success); font-size: 18px; margin-left: 8px;">0</span>
                     </div>
                 </div>
-                <!-- FIX LAYOUT LAPORAN: Tombol Cetak diposisikan TEKSTUR ATAS tombol Export -->
+                
                 <div style="background: var(--card-bg); padding: 15px; border-radius: 12px; margin-bottom: 15px; display: flex; gap: 12px; flex-wrap: wrap; border: 1px solid var(--border); align-items: flex-end;">
                     <div style="flex: 1; min-width: 140px;">
                         <label style="font-size: 10px; font-weight: 800; color: var(--text-muted); text-transform: uppercase; margin-bottom: 4px; display: block;">Filter Kios:</label>
@@ -447,9 +446,9 @@
                         <label style="font-size: 10px; font-weight: 800; color: var(--text-muted); text-transform: uppercase; margin-bottom: 4px; display: block;">Cari Nota/Kasir:</label>
                         <input type="text" id="sales-search-input" class="form-control" placeholder="Kata kunci..." oninput="renderLaporanPenjualan()">
                     </div>
-                    <!-- Grup Tombol Bertumpuk -->
+                    
                     <div style="display: flex; flex-direction: column; gap: 8px;">
-                        <button class="btn-action" style="background: var(--primary); width: 100%; justify-content: center;" onclick="cetakRiwayatLaporan()"><i class="fas fa-print"></i> Cetak Laporan (Thermal)</button>
+                        <button class="btn-action" style="background: var(--primary); width: 100%; justify-content: center;" onclick="cetakRiwayatLaporan()"><i class="fas fa-print"></i> Cetak Laporan</button>
                         <div style="display: flex; gap: 8px;">
                             <button class="btn-action" style="background: var(--success); flex: 1; justify-content: center;" onclick="downloadCSVLaporan()"><i class="fas fa-file-excel"></i> Export CSV</button>
                             <button id="btn-reset-riwayat" class="btn-action" style="background: var(--danger);" onclick="hapusSemuaRiwayat()"><i class="fas fa-trash"></i></button>
@@ -979,14 +978,12 @@
             if (e.key === 'Enter') { 
                 let keyword = document.getElementById('input-barcode').value.trim(); 
                 if(keyword) {
-                    // Cari berdasarkan ID Spesifik Dulu
                     let pById = DB.produkList.find(x => x.id.toLowerCase() === keyword.toLowerCase() && x.kios === kiosAktifPOS);
                     if(pById) {
                         tambahKeKeranjang(pById.id);
                         document.getElementById('input-barcode').value = ''; filterProduk('');
                         return;
                     }
-                    // Cari berdasarkan Nama Spesifik
                     let pByName = DB.produkList.find(x => x.nama.toLowerCase() === keyword.toLowerCase() && x.kios === kiosAktifPOS);
                     if(pByName) {
                         tambahKeKeranjang(pByName.id);
@@ -994,14 +991,11 @@
                         return;
                     }
 
-                    // FIX PENCARIAN: Jika ditekan enter pada keyboard tapi hanya ketikan sebagian
-                    // Jangan munculkan alert error "Barang tidak ditemukan" jika memang ada list menu yang tampil
                     let adaHasilTerkait = DB.produkList.some(p => p.kios === kiosAktifPOS && p.stok > 0 && (p.nama.toLowerCase().includes(keyword.toLowerCase()) || p.id.toLowerCase().includes(keyword.toLowerCase())));
                     
                     if(!adaHasilTerkait) {
                         Swal.fire('Tidak Ditemukan', 'Menu atau Barcode tidak ditemukan di daftar!', 'warning');
                     } else {
-                        // Hilangkan fokus dari kolom pencarian agar keyboard HP tertutup & menu terlihat
                         document.getElementById('input-barcode').blur();
                     }
                 } 
@@ -1042,7 +1036,6 @@
             let idNota = "PJ-" + Date.now().toString().slice(-6);
             let trx = { idNota: idNota, waktuMulaiMs: Date.now(), waktuSelesaiMs: null, waktu: new Date().toLocaleString('id-ID'), totalNota: total, bayar: bayar, metode: metode, kasir: userAktif.nama, tipePesanan: document.getElementById('tipe-pesanan').value, meja: document.getElementById('nomor-meja').value || "-", statusAntrian: "Proses", isVoid: false, items: [...keranjang] };
             
-            // Simpan Transaksi & Potong Stok via Batch Write Firestore
             let batch = db.batch();
             batch.set(db.collection("pos_transaksi").doc(idNota), trx);
             keranjang.forEach(item => {
@@ -1077,58 +1070,41 @@
                 
                 try {
                     let orderId = "QRIS-" + Date.now();
-                    let res = await fetch(backendUrl, { 
-                        method: 'POST', 
-                        headers: { 'Content-Type': 'application/json' }, 
-                        body: JSON.stringify({ order_id: orderId, gross_amount: total }) 
-                    });
-                    
+                    let res = await fetch(backendUrl, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ order_id: orderId, gross_amount: total }) });
                     let data = await res.json();
-                    if(res.ok && data.qr_url) { 
-                        tampilkanModalQRIS(data.qr_url, 'Scan QRIS Dinamis via E-Wallet', total); 
-                    } else { 
-                        throw new Error(data.message || "Gagal membuat QRIS."); 
-                    }
-                } catch (e) { 
-                    return Swal.fire('Gagal Terhubung', e.message, 'error'); 
-                }
+                    if(res.ok && data.qr_url) { tampilkanModalQRIS(data.qr_url, 'Scan QRIS Dinamis via E-Wallet', total); } 
+                    else { throw new Error(data.message || "Gagal membuat QRIS."); }
+                } catch (e) { return Swal.fire('Gagal Terhubung', e.message, 'error'); }
             }
         }
 
         function tampilkanModalQRIS(qrUrl, pesanAtas, total) {
             Swal.fire({ 
                 title: 'Pembayaran QRIS', 
-                html: `<p style="font-size: 13px;">${pesanAtas}</p>
-                       <div style="background: white; padding: 15px; border-radius: 10px; display: inline-block; border: 2px dashed var(--accent);">
-                           <img src="${qrUrl}" style="width: 200px; height: 200px; object-fit: contain;">
-                       </div>
-                       <h3 style="color: var(--primary); font-weight: 900;">Total: Rp ${total.toLocaleString('id-ID')}</h3>`, 
-                showCancelButton: true, 
-                confirmButtonText: '<i class="fas fa-check-circle"></i> Dana Masuk', 
-                cancelButtonText: 'Batal', 
-                confirmButtonColor: 'var(--success)'
+                html: `<p style="font-size: 13px;">${pesanAtas}</p><div style="background: white; padding: 15px; border-radius: 10px; display: inline-block; border: 2px dashed var(--accent);"><img src="${qrUrl}" style="width: 200px; height: 200px; object-fit: contain;"></div><h3 style="color: var(--primary); font-weight: 900;">Total: Rp ${total.toLocaleString('id-ID')}</h3>`, 
+                showCancelButton: true, confirmButtonText: '<i class="fas fa-check-circle"></i> Dana Masuk', cancelButtonText: 'Batal', confirmButtonColor: 'var(--success)'
             }).then((result) => { 
-                if (result.isConfirmed) { 
-                    prosesCheckout(total, total, 'QRIS'); 
-                    Swal.fire({ icon: 'success', title: 'Berhasil!', showConfirmButton: false, timer: 1500 }); 
-                } 
+                if (result.isConfirmed) { prosesCheckout(total, total, 'QRIS'); Swal.fire({ icon: 'success', title: 'Berhasil!', showConfirmButton: false, timer: 1500 }); } 
             });
         }
 
+        // PERBAIKAN: Menampilkan jam secara utuh (tidak dipotong spasi)
         function cetakNotaHTML(trx) {
             let area = document.getElementById('receipt-print-area');
             let itemHtml = trx.items.map(i => `<div class="receipt-row"><span>${i.nama} x${i.qty}</span><span>Rp ${(i.harga*i.qty).toLocaleString('id-ID')}</span></div>${i.catatan ? `<div style="font-size:10px; color:#555; margin-left:5px;">* ${i.catatan}</div>` : ''}`).join('');
-            area.innerHTML = `<div style="text-align: center; margin-bottom: 10px;"><h3 style="margin:0; font-size: 15px;">${DB.settingStruk.namaToko}</h3><div style="font-size:10px;">${DB.settingStruk.alamat}</div></div><div class="receipt-line"></div><div class="receipt-row"><span>Nota: ${trx.idNota}</span><span>${trx.waktu.split(' ')[0]}</span></div><div class="receipt-row"><span>Kasir: ${trx.kasir}</span><span>${trx.tipePesanan}</span></div><div class="receipt-row"><span>Meja: ${trx.meja}</span><span>Byr: ${trx.metode}</span></div><div class="receipt-line"></div>${itemHtml}<div class="receipt-line"></div><div class="receipt-row" style="font-weight: bold; font-size: 13px;"><span>TOTAL</span><span>Rp ${trx.totalNota.toLocaleString('id-ID')}</span></div><div class="receipt-row"><span>BAYAR</span><span>Rp ${trx.bayar.toLocaleString('id-ID')}</span></div><div class="receipt-row"><span>KEMBALI</span><span>Rp ${(trx.bayar - trx.totalNota).toLocaleString('id-ID')}</span></div><div class="receipt-row" style="font-weight: bold; margin-top: 4px;"><span>METODE</span><span>${trx.metode}</span></div><div class="receipt-line"></div><div style="text-align: center; font-size:10px; margin-top: 8px;">${DB.settingStruk.footer}</div>`;
+            area.innerHTML = `<div style="text-align: center; margin-bottom: 10px;"><h3 style="margin:0; font-size: 15px;">${DB.settingStruk.namaToko}</h3><div style="font-size:10px;">${DB.settingStruk.alamat}</div></div><div class="receipt-line"></div><div class="receipt-row"><span>Nota: ${trx.idNota}</span><span>${trx.waktu}</span></div><div class="receipt-row"><span>Kasir: ${trx.kasir}</span><span>${trx.tipePesanan}</span></div><div class="receipt-row"><span>Meja: ${trx.meja}</span><span>Byr: ${trx.metode}</span></div><div class="receipt-line"></div>${itemHtml}<div class="receipt-line"></div><div class="receipt-row" style="font-weight: bold; font-size: 13px;"><span>TOTAL</span><span>Rp ${trx.totalNota.toLocaleString('id-ID')}</span></div><div class="receipt-row"><span>BAYAR</span><span>Rp ${trx.bayar.toLocaleString('id-ID')}</span></div><div class="receipt-row"><span>KEMBALI</span><span>Rp ${(trx.bayar - trx.totalNota).toLocaleString('id-ID')}</span></div><div class="receipt-row" style="font-weight: bold; margin-top: 4px;"><span>METODE</span><span>${trx.metode}</span></div><div class="receipt-line"></div><div style="text-align: center; font-size:10px; margin-top: 8px;">${DB.settingStruk.footer}</div>`;
             window.print();
         }
 
+        // PERBAIKAN: Jam tidak hilang di bluetooth thermal
         async function generateTeksStrukBluetooth(trx) {
             let formatLine = (left, right) => { let l = String(left); let r = String(right); let space = 32 - l.length - r.length; return l + ' '.repeat(space > 0 ? space : 1) + r; };
-            let textBT = '\x1B\x61\x01' + DB.settingStruk.namaToko + '\n\x1B\x61\x00' + DB.settingStruk.alamat + '\n--------------------------------\nNota : ' + trx.idNota + '\nKasir: ' + trx.kasir + '\nWaktu: ' + trx.waktu.split(' ')[0] + '\n--------------------------------\n';
+            let textBT = '\x1B\x61\x01' + DB.settingStruk.namaToko + '\n\x1B\x61\x00' + DB.settingStruk.alamat + '\n--------------------------------\nNota : ' + trx.idNota + '\nKasir: ' + trx.kasir + '\nWaktu: ' + trx.waktu + '\n--------------------------------\n';
             trx.items.forEach(item => { let sub = item.harga * item.qty; textBT += item.nama.substring(0, 32) + '\n'; let calc = `  ${item.qty} x ${item.harga.toLocaleString('id-ID')}`; textBT += formatLine(calc, sub.toLocaleString('id-ID')) + '\n'; if(item.catatan) textBT += `  * ${item.catatan}\n`; });
             textBT += '--------------------------------\n' + formatLine('TOTAL', 'Rp ' + trx.totalNota.toLocaleString('id-ID')) + '\n' + formatLine('BAYAR', 'Rp ' + trx.bayar.toLocaleString('id-ID')) + '\n' + formatLine('KEMBALI', 'Rp ' + (trx.bayar - trx.totalNota).toLocaleString('id-ID')) + '\n' + formatLine('METODE', trx.metode) + '\n--------------------------------\n\x1B\x61\x01' + DB.settingStruk.footer + '\n\n\n';
             await cetakBluetoothRaw(textBT);
         }
+        
         async function hubungkanPrinterBluetooth() { if (!navigator.bluetooth) return alert("Bluetooth tidak didukung."); try { btDevice = await navigator.bluetooth.requestDevice({ filters: [{services: ['000018f0-0000-1000-8000-00805f9b34fb']}], optionalServices: ['000018f0-0000-1000-8000-00805f9b34fb'] }); const server = await btDevice.gatt.connect(); const service = await server.getPrimaryService('000018f0-0000-1000-8000-00805f9b34fb'); btCharacteristic = await service.getCharacteristic('00002af1-0000-1000-8000-00805f9b34fb'); document.getElementById('printer-status').innerHTML = `<span style="color:var(--success);">✅ Terhubung: ${btDevice.name}</span>`; db.collection("pos_pengaturan").doc("sistem").set({ printerName: btDevice.name }, {merge:true}); } catch (err) { console.error(err); } }
         async function autoConnectPrinter() { if (navigator.bluetooth && navigator.bluetooth.getDevices) { try { const devices = await navigator.bluetooth.getDevices(); if(!DB.printerName) return; for (const device of devices) { if (device.name !== DB.printerName) continue; const server = await device.gatt.connect(); const service = await server.getPrimaryService('000018f0-0000-1000-8000-00805f9b34fb'); btCharacteristic = await service.getCharacteristic('00002af1-0000-1000-8000-00805f9b34fb'); btDevice = device; let statusEl = document.getElementById('printer-status'); if(statusEl) statusEl.innerHTML = `<span style="color:var(--success);">✅ Terhubung Otomatis: ${device.name}</span>`; break; } } catch(err) { console.error(err); } } }
         async function cetakBluetoothRaw(text) { if(!btCharacteristic) return false; try { let encoder = new TextEncoder(); let printData = encoder.encode('\x1B\x40' + text + '\n\n\n'); for(let i = 0; i < printData.length; i += 40) { await btCharacteristic.writeValue(printData.slice(i, i + 40)); await new Promise(r => setTimeout(r, 50)); } return true; } catch(e) { return false; } }
@@ -1163,50 +1139,60 @@
             }); tbody.innerHTML = htmlTemp; document.getElementById('total-omset-display').innerText = `Rp ${totalOmset.toLocaleString('id-ID')}`;
         }
 
-        // Fungsi Cetak Laporan Thermal Berdasarkan Filter Aktif
-        function cetakRiwayatLaporan() {
+        // PERBAIKAN: Cetak Laporan mendukung Print langsung Thermal Bluetooth
+        async function cetakRiwayatLaporan() {
             let filterKios = document.getElementById('sales-kios-filter').value;
             let search = document.getElementById('sales-search-input').value.toLowerCase();
             let totalOmset = 0;
+            let dataDicetak = [];
             
-            let htmlText = `<div style="text-align: center; margin-bottom: 10px;">
-                <h3 style="margin:0; font-size: 14px;">${DB.settingStruk.namaToko}</h3>
-                <div style="font-size:11px; font-weight:bold; margin-top:2px;">LAPORAN PENJUALAN</div>
-                <div style="font-size:10px;">Filter Kios: ${filterKios}</div>
-                <div style="font-size:10px;">Waktu Cetak: ${new Date().toLocaleString('id-ID')}</div>
-            </div><div class="receipt-line"></div>`;
-            
-            let dataDicetak = false;
             DB.riwayatPenjualan.forEach(nota => {
                 let itemsFiltered = nota.items.filter(i => filterKios === 'ALL' || i.kios === filterKios);
                 if(itemsFiltered.length === 0) return;
                 if(search && !nota.idNota.toLowerCase().includes(search) && !nota.kasir.toLowerCase().includes(search)) return;
                 
-                dataDicetak = true;
                 let subTotal = itemsFiltered.reduce((sum, i) => sum + (i.harga*i.qty), 0);
                 if(!nota.isVoid) totalOmset += subTotal;
                 
-                let detail = itemsFiltered.map(i => `<div class="receipt-row"><span style="font-size:11px;">${i.nama} x${i.qty}</span><span style="font-size:11px;">${(i.harga*i.qty).toLocaleString('id-ID')}</span></div>`).join('');
-                
-                htmlText += `
-                <div style="${nota.isVoid ? 'text-decoration: line-through; color: #555;' : ''}">
-                    <div class="receipt-row" style="font-weight:bold; font-size:11px;"><span>${nota.idNota}</span><span>${nota.waktu.split(' ')[1]}</span></div>
-                    <div class="receipt-row" style="font-size:10px;"><span>Kasir: ${nota.kasir}</span><span>${nota.isVoid ? 'VOID' : nota.metode}</span></div>
-                    ${detail}
-                    <div class="receipt-row" style="font-weight:bold; margin-top:2px;"><span>TOTAL</span><span>Rp ${subTotal.toLocaleString('id-ID')}</span></div>
-                </div>
-                <div class="receipt-line" style="border-bottom: 1px dotted black;"></div>`;
+                dataDicetak.push({ idNota: nota.idNota, waktu: nota.waktu, kasir: nota.kasir, metode: nota.isVoid ? 'VOID' : nota.metode, isVoid: nota.isVoid, subTotal: subTotal, items: itemsFiltered });
             });
             
-            if(!dataDicetak) return Swal.fire('Kosong', 'Tidak ada data pada filter saat ini.', 'warning');
-            
-            htmlText += `<div style="text-align: right; font-weight: bold; font-size: 13px; margin-top: 10px;">
-                TOTAL OMSET: Rp ${totalOmset.toLocaleString('id-ID')}
-            </div>`;
-            
-            let printArea = document.getElementById('receipt-print-area');
-            printArea.innerHTML = htmlText;
-            window.print();
+            if(dataDicetak.length === 0) return Swal.fire('Kosong', 'Tidak ada data pada filter saat ini.', 'warning');
+
+            // Cek Jika Menggunakan Bluetooth, langsung tembak teks ke thermal
+            if (DB.settingPrinter === 'bluetooth') {
+                let formatLine = (left, right) => { let l = String(left); let r = String(right); let space = 32 - l.length - r.length; return l + ' '.repeat(space > 0 ? space : 1) + r; };
+                let textBT = '\x1B\x61\x01' + DB.settingStruk.namaToko + '\n\x1B\x61\x00LAPORAN PENJUALAN\nKios: ' + filterKios + '\nCetak: ' + new Date().toLocaleString('id-ID') + '\n--------------------------------\n';
+                
+                dataDicetak.forEach(nota => {
+                    if(nota.isVoid) textBT += '[VOID] ';
+                    textBT += nota.idNota + '\n' + nota.waktu + ' | ' + nota.kasir + '\n';
+                    nota.items.forEach(i => { textBT += ` ${i.nama} x${i.qty}\n`; });
+                    textBT += formatLine(' SUBTOTAL', 'Rp ' + nota.subTotal.toLocaleString('id-ID')) + '\n';
+                    textBT += '--------------------------------\n';
+                });
+                textBT += formatLine('TOTAL OMSET', 'Rp ' + totalOmset.toLocaleString('id-ID')) + '\n\n\n';
+                
+                await cetakBluetoothRaw(textBT);
+            } else {
+                // Tampilan HVS/Thermal Web (Mode Browser HTML)
+                let htmlText = `<div style="text-align: center; margin-bottom: 10px;"><h3 style="margin:0; font-size: 14px;">${DB.settingStruk.namaToko}</h3><div style="font-size:11px; font-weight:bold; margin-top:2px;">LAPORAN PENJUALAN</div><div style="font-size:10px;">Filter Kios: ${filterKios}</div><div style="font-size:10px;">Waktu Cetak: ${new Date().toLocaleString('id-ID')}</div></div><div class="receipt-line"></div>`;
+                
+                dataDicetak.forEach(nota => {
+                    let detail = nota.items.map(i => `<div class="receipt-row"><span style="font-size:11px;">${i.nama} x${i.qty}</span><span style="font-size:11px;">${(i.harga*i.qty).toLocaleString('id-ID')}</span></div>`).join('');
+                    htmlText += `
+                    <div style="${nota.isVoid ? 'text-decoration: line-through; color: #555;' : ''}">
+                        <div class="receipt-row" style="font-weight:bold; font-size:11px;"><span>${nota.idNota}</span><span>${nota.waktu}</span></div>
+                        <div class="receipt-row" style="font-size:10px;"><span>Kasir: ${nota.kasir}</span><span>${nota.metode}</span></div>
+                        ${detail}
+                        <div class="receipt-row" style="font-weight:bold; margin-top:2px;"><span>TOTAL</span><span>Rp ${nota.subTotal.toLocaleString('id-ID')}</span></div>
+                    </div><div class="receipt-line" style="border-bottom: 1px dotted black;"></div>`;
+                });
+                
+                htmlText += `<div style="text-align: right; font-weight: bold; font-size: 13px; margin-top: 10px;">TOTAL OMSET: Rp ${totalOmset.toLocaleString('id-ID')}</div>`;
+                
+                let printArea = document.getElementById('receipt-print-area'); printArea.innerHTML = htmlText; window.print();
+            }
         }
 
         async function prosesVoid(idNota) {
