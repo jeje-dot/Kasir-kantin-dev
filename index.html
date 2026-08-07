@@ -305,8 +305,8 @@
                         <div style="display:flex; gap:10px; margin-bottom: 10px; flex-shrink: 0;">
                             <div class="search-bar">
                                 <i class="fas fa-search"></i>
-                                <!-- Pencarian langsung merespons saat diketik (walau 1 huruf) -->
-                                <input type="text" id="input-barcode" placeholder="Ketik Menu / Scan Barcode..." onkeyup="handleBarcode(event)" oninput="filterProduk(this.value)">
+                                <!-- FIX PENCARIAN: onkeyup memaksa render ulang tiap kali tombol dilepas (anti-lag di tablet) -->
+                                <input type="text" id="input-barcode" placeholder="Ketik Menu / Scan Barcode..." onkeyup="filterProduk(this.value); handleBarcode(event)" oninput="filterProduk(this.value)">
                             </div>
                             <select id="pos-kios-selector" class="form-control" style="width: auto; font-weight: bold; cursor: pointer; border: 2px solid var(--accent); background: white;" onchange="gantiKiosPOS()"></select>
                         </div>
@@ -437,7 +437,8 @@
                         Total Valid: <span id="total-omset-display" style="color: var(--success); font-size: 18px; margin-left: 8px;">0</span>
                     </div>
                 </div>
-                <div style="background: var(--card-bg); padding: 15px; border-radius: 12px; margin-bottom: 15px; display: flex; gap: 12px; flex-wrap: wrap; border: 1px solid var(--border);">
+                <!-- FIX LAYOUT LAPORAN: Tombol Cetak diposisikan TEKSTUR ATAS tombol Export -->
+                <div style="background: var(--card-bg); padding: 15px; border-radius: 12px; margin-bottom: 15px; display: flex; gap: 12px; flex-wrap: wrap; border: 1px solid var(--border); align-items: flex-end;">
                     <div style="flex: 1; min-width: 140px;">
                         <label style="font-size: 10px; font-weight: 800; color: var(--text-muted); text-transform: uppercase; margin-bottom: 4px; display: block;">Filter Kios:</label>
                         <select id="sales-kios-filter" class="form-control" onchange="renderLaporanPenjualan()"></select>
@@ -446,11 +447,13 @@
                         <label style="font-size: 10px; font-weight: 800; color: var(--text-muted); text-transform: uppercase; margin-bottom: 4px; display: block;">Cari Nota/Kasir:</label>
                         <input type="text" id="sales-search-input" class="form-control" placeholder="Kata kunci..." oninput="renderLaporanPenjualan()">
                     </div>
-                    <!-- Tombol Cetak Laporan Thermal sesuai Filter -->
-                    <div style="display: flex; align-items: flex-end; gap: 8px;">
-                        <button class="btn-action" style="background: var(--secondary);" onclick="cetakRiwayatLaporan()"><i class="fas fa-print"></i> Cetak Laporan</button>
-                        <button class="btn-action" style="background: var(--success);" onclick="downloadCSVLaporan()"><i class="fas fa-file-excel"></i> Export CSV</button>
-                        <button id="btn-reset-riwayat" class="btn-action" style="background: var(--danger);" onclick="hapusSemuaRiwayat()"><i class="fas fa-trash"></i> Reset</button>
+                    <!-- Grup Tombol Bertumpuk -->
+                    <div style="display: flex; flex-direction: column; gap: 8px;">
+                        <button class="btn-action" style="background: var(--primary); width: 100%; justify-content: center;" onclick="cetakRiwayatLaporan()"><i class="fas fa-print"></i> Cetak Laporan (Thermal)</button>
+                        <div style="display: flex; gap: 8px;">
+                            <button class="btn-action" style="background: var(--success); flex: 1; justify-content: center;" onclick="downloadCSVLaporan()"><i class="fas fa-file-excel"></i> Export CSV</button>
+                            <button id="btn-reset-riwayat" class="btn-action" style="background: var(--danger);" onclick="hapusSemuaRiwayat()"><i class="fas fa-trash"></i></button>
+                        </div>
                     </div>
                 </div>
                 <div style="overflow-x: auto; background: var(--card-bg); border-radius: 12px; border: 1px solid var(--border);">
@@ -976,20 +979,32 @@
             if (e.key === 'Enter') { 
                 let keyword = document.getElementById('input-barcode').value.trim(); 
                 if(keyword) {
-                    let pById = DB.produkList.find(x => x.id === keyword && x.kios === kiosAktifPOS);
+                    // Cari berdasarkan ID Spesifik Dulu
+                    let pById = DB.produkList.find(x => x.id.toLowerCase() === keyword.toLowerCase() && x.kios === kiosAktifPOS);
                     if(pById) {
                         tambahKeKeranjang(pById.id);
+                        document.getElementById('input-barcode').value = ''; filterProduk('');
+                        return;
+                    }
+                    // Cari berdasarkan Nama Spesifik
+                    let pByName = DB.produkList.find(x => x.nama.toLowerCase() === keyword.toLowerCase() && x.kios === kiosAktifPOS);
+                    if(pByName) {
+                        tambahKeKeranjang(pByName.id);
+                        document.getElementById('input-barcode').value = ''; filterProduk('');
+                        return;
+                    }
+
+                    // FIX PENCARIAN: Jika ditekan enter pada keyboard tapi hanya ketikan sebagian
+                    // Jangan munculkan alert error "Barang tidak ditemukan" jika memang ada list menu yang tampil
+                    let adaHasilTerkait = DB.produkList.some(p => p.kios === kiosAktifPOS && p.stok > 0 && (p.nama.toLowerCase().includes(keyword.toLowerCase()) || p.id.toLowerCase().includes(keyword.toLowerCase())));
+                    
+                    if(!adaHasilTerkait) {
+                        Swal.fire('Tidak Ditemukan', 'Menu atau Barcode tidak ditemukan di daftar!', 'warning');
                     } else {
-                        let pByName = DB.produkList.find(x => x.nama.toLowerCase() === keyword.toLowerCase() && x.kios === kiosAktifPOS);
-                        if(pByName) {
-                            tambahKeKeranjang(pByName.id);
-                        } else {
-                            Swal.fire('Tidak Ditemukan', 'Menu atau Barcode tidak ditemukan di daftar!', 'warning');
-                        }
+                        // Hilangkan fokus dari kolom pencarian agar keyboard HP tertutup & menu terlihat
+                        document.getElementById('input-barcode').blur();
                     }
                 } 
-                document.getElementById('input-barcode').value = ''; 
-                filterProduk(''); 
             } 
         }
 
